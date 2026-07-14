@@ -6,16 +6,112 @@ from backend.services.loader import DATA_DIR
 
 PROFILES_DIR = os.path.join(DATA_DIR, "profiles")
 
+SEMANTIC_TEMPLATES = {
+    "sales": {
+        "business_name": "Sales",
+        "display_name": "Revenue",
+        "aggregation_type": "sum",
+        "description": "Total sales revenue from transactions",
+        "units": "$",
+        "synonyms": ["revenue", "sales", "turnover", "income", "amount", "sold amount", "sale", "sale price", "billing", "earnings"]
+    },
+    "profit": {
+        "business_name": "Profit",
+        "display_name": "Profit",
+        "aggregation_type": "sum",
+        "description": "Net business earnings after costs",
+        "units": "$",
+        "synonyms": ["earnings", "profit", "net profit", "gain", "margin", "income", "earning", "profitability"]
+    },
+    "quantity": {
+        "business_name": "Quantity",
+        "display_name": "Quantity Sold",
+        "aggregation_type": "sum",
+        "description": "Total number of units sold",
+        "units": "units",
+        "synonyms": ["quantity", "qty", "volume", "units", "items count", "sold quantity", "count", "pieces"]
+    },
+    "discount": {
+        "business_name": "Discount",
+        "display_name": "Discount Rate",
+        "aggregation_type": "mean",
+        "description": "Promotional discount applied to price",
+        "units": "%",
+        "synonyms": ["discount", "disc", "rebate", "markdown", "cut", "discount percentage"]
+    },
+    "order id": {
+        "business_name": "Order ID",
+        "display_name": "Order ID",
+        "aggregation_type": "count",
+        "description": "Unique identifier of customer order transaction",
+        "units": "ID",
+        "synonyms": ["order id", "order", "transaction id", "orderid", "purchase id", "transactions", "orders", "txn id", "bill no"]
+    },
+    "customer name": {
+        "business_name": "Customer Name",
+        "display_name": "Customer",
+        "aggregation_type": "count",
+        "description": "Full name of customer",
+        "units": "Name",
+        "synonyms": ["customer name", "customer", "buyer", "client name", "client", "patron", "customers", "customer_name", "client_name"]
+    },
+    "product name": {
+        "business_name": "Product Name",
+        "display_name": "Product",
+        "aggregation_type": "count",
+        "description": "Description/name of the product",
+        "units": "Name",
+        "synonyms": ["product name", "product", "item name", "item", "merchandise", "products", "sku", "product_name", "product id"]
+    },
+    "city": {
+        "business_name": "City",
+        "display_name": "City",
+        "aggregation_type": "count",
+        "description": "City where transaction was completed",
+        "units": "Location",
+        "synonyms": ["city", "town", "metro", "cities", "location city", "shipped city"]
+    },
+    "state": {
+        "business_name": "State",
+        "display_name": "State",
+        "aggregation_type": "count",
+        "description": "State where transaction occurred",
+        "units": "Location",
+        "synonyms": ["state", "province", "territory", "states", "shipped state"]
+    },
+    "region": {
+        "business_name": "Region",
+        "display_name": "Region",
+        "aggregation_type": "count",
+        "description": "Geographical region partition",
+        "units": "Location",
+        "synonyms": ["region", "zone", "area", "regions", "geography"]
+    },
+    "category": {
+        "business_name": "Category",
+        "display_name": "Category",
+        "aggregation_type": "count",
+        "description": "High level product classification category",
+        "units": "Category",
+        "synonyms": ["category", "dept", "department", "division", "categories", "vertical", "product group"]
+    },
+    "salary": {
+        "business_name": "Salary",
+        "display_name": "Salary",
+        "aggregation_type": "mean",
+        "description": "Employee annual compensation",
+        "units": "$",
+        "synonyms": ["salary", "wage", "pay", "compensation", "earnings", "payroll"]
+    }
+}
+
 def get_df_hash(df: pd.DataFrame) -> str:
-    """
-    Computes a stable hash representation of a dataframe based on its shape and columns.
-    """
     col_str = ",".join(df.columns)
     return f"{col_str}:{df.shape[0]}x{df.shape[1]}"
 
 def profile_dataset(name: str, df: pd.DataFrame) -> str:
     """
-    Generates a statistical profile of a dataframe and caches it.
+    Generates a statistical profile of a dataframe (including a rich Semantic Layer) and caches it.
     """
     os.makedirs(PROFILES_DIR, exist_ok=True)
     df_hash = get_df_hash(df)
@@ -34,10 +130,11 @@ def profile_dataset(name: str, df: pd.DataFrame) -> str:
         "dataset_name": name,
         "rows": df.shape[0],
         "columns_count": df.shape[1],
-        "columns": []
+        "columns": [],
+        "semantic_layer": {}
     }
     
-    # Analyze columns
+    # Analyze columns & construct Semantic Layer
     for col in df.columns:
         col_type = str(df[col].dtype)
         null_count = int(df[col].isnull().sum())
@@ -58,16 +155,62 @@ def profile_dataset(name: str, df: pd.DataFrame) -> str:
             col_stats["mean"] = float(df[col].mean()) if not pd.isnull(df[col].mean()) else None
             col_stats["median"] = float(df[col].median()) if not pd.isnull(df[col].median()) else None
         
-        # Top Values (up to 3)
+        # Sample Values (up to 3)
+        sample_vals = []
         try:
-            top_vals = df[col].value_counts().head(3)
-            col_stats["top_values"] = [{"value": str(k), "count": int(v)} for k, v in top_vals.items()]
+            non_null_vals = df[col].dropna().unique()
+            sample_vals = [str(x) for x in non_null_vals[:3]]
+            col_stats["top_values"] = [{"value": str(k), "count": int(v)} for k, v in df[col].value_counts().head(3).items()]
         except Exception:
             col_stats["top_values"] = []
             
         profile["columns"].append(col_stats)
 
-    # Core correlations (top numeric correlation pairs if numerical columns exist)
+        # Build Semantic Layer entry for this column
+        col_lower = col.lower().strip()
+        matched_template = None
+        
+        # Check template matching
+        for key, template in SEMANTIC_TEMPLATES.items():
+            if key in col_lower or any(syn in col_lower for syn in template["synonyms"]):
+                matched_template = template
+                break
+                
+        # Default fallback semantic entry
+        if pd.api.types.is_numeric_dtype(df[col]):
+            data_type = "numeric"
+            default_agg = "mean" if "discount" in col_lower or "average" in col_lower or "rate" in col_lower else "sum"
+        elif pd.api.types.is_datetime64_any_dtype(df[col]) or "date" in col_lower or "time" in col_lower:
+            data_type = "datetime"
+            default_agg = "count"
+        else:
+            data_type = "string"
+            default_agg = "count"
+
+        semantic_entry = {
+            "business_name": col,
+            "actual_column": col,
+            "display_name": col,
+            "data_type": data_type,
+            "aggregation_type": default_agg,
+            "description": f"Column {col} containing {data_type} data",
+            "units": "units" if data_type == "numeric" else "count",
+            "sample_values": sample_vals,
+            "synonyms": [col_lower, col_lower.replace("_", " "), col_lower.replace(" ", "")]
+        }
+
+        if matched_template:
+            # Enrich entry with matched template details
+            semantic_entry["business_name"] = matched_template["business_name"]
+            semantic_entry["display_name"] = matched_template["display_name"]
+            semantic_entry["aggregation_type"] = matched_template["aggregation_type"]
+            semantic_entry["description"] = matched_template["description"]
+            semantic_entry["units"] = matched_template["units"]
+            semantic_entry["synonyms"] = list(set(semantic_entry["synonyms"] + matched_template["synonyms"]))
+
+        profile["semantic_layer"][col] = semantic_entry
+
+    # Core correlations
     try:
         numeric_cols = df.select_dtypes(include=["number"])
         if numeric_cols.shape[1] >= 2:
@@ -93,9 +236,6 @@ def profile_dataset(name: str, df: pd.DataFrame) -> str:
     return profile_str
 
 def format_profile_for_prompt(profile_str: str) -> str:
-    """
-    Transforms the JSON profile output into a concise markdown text summary for LLM prompt ingestion.
-    """
     try:
         profile = json.loads(profile_str)
         summary = f"Dataset: {profile['dataset_name']} ({profile['rows']} rows, {profile['columns_count']} columns)\nColumn Details:\n"
@@ -107,6 +247,13 @@ def format_profile_for_prompt(profile_str: str) -> str:
                 tops = ", ".join([f"'{v['value']}' ({v['count']})" for v in col["top_values"][:2]])
                 details += f", Top=[{tops}]"
             summary += details + "\n"
+            
+        # Append semantic layer info
+        if "semantic_layer" in profile and profile["semantic_layer"]:
+            summary += "\nSemantic Layer Glossary:\n"
+            for col, sem in profile["semantic_layer"].items():
+                summary += f"  * {col} (as '{sem['display_name']}'): {sem['description']}. Synonyms: {', '.join(sem['synonyms'][:4])}\n"
+                
         if profile.get("high_correlations"):
             summary += "Correlations: " + ", ".join(profile["high_correlations"]) + "\n"
         return summary

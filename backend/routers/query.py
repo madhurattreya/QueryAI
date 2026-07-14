@@ -188,6 +188,7 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
     S synchronous stream generator executing queries with SSE progress states.
     """
     total_start = time.time()
+    print(f"[API QUERY] Request received: question='{req.question}', conversation_id={req.conversation_id}")
     
     # Time measurements dict
     timings = {
@@ -205,6 +206,7 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
         "Response": 0.0
     }
     
+    print(f"[API QUERY] SSE event: type=progress, step=Receiving Request")
     yield json.dumps({"type": "progress", "step": "Receiving Request"}) + "\n"
     question = req.question
     conversation_id = req.conversation_id
@@ -219,10 +221,21 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
     timings["Routing"] += time.time() - t_start
 
     # Get active source metadata
+    print(f"[API QUERY] SSE event: type=progress, step=Loading Active Dataset")
     yield json.dumps({"type": "progress", "step": "Loading Active Dataset"}) + "\n"
     t_start_ds = time.time()
     dataset_name, dataset_hash, dataset_id = get_active_dataset_details()
     timings["Dataset loading"] = time.time() - t_start_ds
+    print(f"[API QUERY] Dataset loaded: name='{dataset_name}', hash='{dataset_hash}', id='{dataset_id}'")
+    
+    # Auto pre-compute KPI dashboard
+    import backend.services.kpi_engine as kpi_engine
+    active_df = None
+    if config.current_source_type == "file" and config.datasets:
+        active_df_name = list(config.datasets.keys())[0]
+        active_df = config.datasets[active_df_name]
+        if active_df is not None and dataset_hash not in kpi_engine.kpi_cache:
+            kpi_engine.compute_and_cache_kpis(active_df_name, active_df, dataset_hash)
     
     # Guard: No active dataset loaded or SQL connection broken
     no_file_data = config.current_source_type == "file" and not config.datasets
@@ -271,18 +284,36 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
         conv_details["summary"] = None
 
     # Step 1: Query Engine & Complexity Classification
+    print(f"[API QUERY] SSE event: type=progress, step=Routing Query")
     yield json.dumps({"type": "progress", "step": "Routing Query"}) + "\n"
     
     t_start_route = time.time()
-    router_res = router_service.classify_query_engine_detailed(question)
+    
+    # Retrieve previous assistant execution plan for multi-turn state context
+    prev_plan = None
+    try:
+        recent_messages = db.get_messages(conversation_id, limit=2)
+        if recent_messages:
+            for m in reversed(recent_messages):
+                if m["role"] == "assistant" and m.get("debug_info"):
+                    info = json.loads(m["debug_info"])
+                    if info.get("execution_plan"):
+                        prev_plan = info["execution_plan"]
+                        break
+    except Exception as e:
+        print(f"[CONTEXT MERGER WARNING] Failed to retrieve context: {str(e)}")
+
+    router_res = router_service.classify_query_engine_detailed(question, prev_plan=prev_plan, conversation_id=conversation_id)
     engine_type = router_res["engine"]
     complexity = router_service.detect_complexity(question)
     fallback_reason = router_res.get("fallback_reason")
     llm_used = router_res.get("llm_used", False)
     parsed_query = router_res.pop("parsed_query", None)
     timings["Routing"] += time.time() - t_start_route
+    print(f"[API QUERY] Router decision: engine_type='{engine_type}', complexity='{complexity}', llm_used={llm_used}")
     
     # Step 2: Schema extraction
+    print(f"[API QUERY] SSE event: type=progress, step=Building Cached Schema")
     yield json.dumps({"type": "progress", "step": "Building Cached Schema"}) + "\n"
     
     t_start_schema = time.time()
@@ -334,6 +365,7 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
     timings["Cache lookup"] = time.time() - t_start_cache
     
     if cached_val:
+        print(f"[API QUERY] SSE event: type=progress, step=Cache hit! Returning cached result...")
         yield json.dumps({"type": "progress", "step": "Cache hit! Returning cached result..."}) + "\n"
         
         # Prepare response dict
@@ -356,6 +388,7 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
         cached_val["debug_info"]["timings"] = {k: round(v, 4) for k, v in timings.items()}
         cached_val["debug_info"]["cache_hit"] = True
         cached_val["debug_info"]["slowest_stage"] = f"{slowest} ({max_val * 1000:.1f}ms)"
+        print(f"[API QUERY] SSE event: type=success (cached)")
         yield json.dumps(cached_val) + "\n"
         return
 
@@ -376,6 +409,7 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
     # Step 4: Execution Plan Generation (Conditional Planning)
     plan_block = ""
     if complexity == "complex" and engine_type in ["aggregation", "filter", "visualization", "prediction"]:
+        print(f"[API QUERY] SSE event: type=progress, step=Generating query execution plan...")
         yield json.dumps({"type": "progress", "step": "Generating query execution plan..."}) + "\n"
         t_start = time.time()
         plan_prompt = prompt_builder.build_prompt(
@@ -421,6 +455,7 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
     
     # Check if we can execute deterministically without LLM
     if not llm_used:
+        print(f"[API QUERY] SSE event: type=progress, step=Executing Plan (Deterministic Engine)")
         yield json.dumps({"type": "progress", "step": "Executing Plan (Deterministic Engine)"}) + "\n"
         
         # 1. Visualization Engine
@@ -511,23 +546,96 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
             context.code = code
             timings["Execution"] = time.time() - t_start_insight
             
-        # 3. Lookup, Filter, Aggregation, Sorting, Ranking Engine
+        # 3. KPI Dashboard Overview
+        elif engine_type == "kpi_dashboard":
+            t_start_kpi = time.time()
+            kpis = kpi_engine.kpi_cache.get(dataset_hash)
+            if not kpis and active_df is not None:
+                kpis = kpi_engine.compute_and_cache_kpis(dataset_name, active_df, dataset_hash)
+            if kpis:
+                result = pd.DataFrame([{"KPI": k.upper(), "Value": str(v)} for k, v in kpis.items() if not isinstance(v, list)])
+                context.raw_result = result
+                code = "# Precomputed KPI Dashboard Overview"
+                context.code = code
+                context.explanation = (
+                    f"Business Dashboard Overview for {dataset_name}:\n"
+                    f"- Total Revenue: {kpis['revenue']}\n"
+                    f"- Total Profit: {kpis['profit']} (Margin: {kpis['margin']}%)\n"
+                    f"- Total Orders: {kpis['orders']} from {kpis['customers']} customers\n"
+                    f"- Average Order Value: {kpis['aov']}"
+                )
+            else:
+                context.raw_result = pd.DataFrame()
+                code = "# Precomputed KPI Dashboard"
+                context.code = code
+                context.explanation = "No KPI dashboard is currently cached."
+            timings["Execution"] = time.time() - t_start_kpi
+
+        # 4. Metadata Engine
+        elif engine_type == "metadata":
+            t_start_meta = time.time()
+            tables = list(config.datasets.keys()) if config.current_source_type == "file" else []
+            if config.current_source_type == "sql" and config.database_engine:
+                try:
+                    tables = inspect(config.database_engine).get_table_names()
+                except Exception:
+                    pass
+            tables_str = ", ".join(tables)
+            context.explanation = f"Metadata summary: Currently loaded tables: {tables_str}"
+            context.raw_result = pd.DataFrame([{"Tables": tables}])
+            code = "# Preloaded Metadata check"
+            context.code = code
+            timings["Execution"] = time.time() - t_start_meta
+
+        # 5. General Chat
+        elif engine_type == "general_chat":
+            t_start_chat = time.time()
+            context.explanation = "Hello! I am QueryIQ, your enterprise AI data analyst. How can I help you explore your data today?"
+            context.raw_result = pd.DataFrame([{"Message": context.explanation}])
+            code = "# Direct chat response"
+            context.code = code
+            timings["Execution"] = time.time() - t_start_chat
+
+        # 6. Ambiguity Handler
+        elif engine_type == "ambiguity":
+            t_start_amb = time.time()
+            reason = parsed_query.execution_plan.get("match_reason") if parsed_query else "Ambiguous columns detected."
+            context.explanation = f"Ambiguity detected: {reason}\nCould you please clarify your request?"
+            context.raw_result = pd.DataFrame([{"Status": "Ambiguous", "Reason": reason}])
+            code = "# Ambiguity Resolution Required"
+            context.code = code
+            timings["Execution"] = time.time() - t_start_amb
+
+        # 7. Lookup, Filter, Aggregation, Sorting, Ranking, ID Lookup, Analytics Library
         else:
             t_start_exec = time.time()
             from backend.services.query_engine import execute_parsed_query
+            from backend.services.join_planner import JoinPlanner
             
-            df_name = ""
-            df = None
-            if config.datasets:
-                df_name = list(config.datasets.keys())[0]
-                df = config.datasets[df_name]
+            planner = JoinPlanner()
+            merged_df, join_code, matched_tables = planner.plan_and_join_datasets(parsed_query)
+            
+            if matched_tables and len(matched_tables) > 1:
+                df = merged_df
+                df_name = f"merged_{'_'.join(matched_tables)}"
+                result, query_code = execute_parsed_query(parsed_query, df, df_name=df_name)
+                code_expr = f"{join_code}\nresult = {query_code}"
+            else:
+                df_name = matched_tables[0] if matched_tables else (list(config.datasets.keys())[0] if config.datasets else "df")
+                df = config.datasets.get(df_name)
+                result, query_code = execute_parsed_query(parsed_query, df, df_name=df_name)
+                code_expr = query_code
                 
-            result, code_expr = execute_parsed_query(parsed_query, df, df_name=df_name)
+            print(f"[API QUERY] Query engine execution: complete in {time.time() - t_start_exec:.6f}s")
             context.raw_result = result
             code = f"result = {code_expr}"
             context.code = code
             
-            if isinstance(result, (pd.DataFrame, pd.Series)):
+            if parsed_query and parsed_query.intent == "id_lookup" and not result.empty:
+                row_dict = result.iloc[0].to_dict()
+                kv_desc = ", ".join([f"{k}: {v}" for k, v in row_dict.items() if pd.notnull(v)])
+                context.explanation = f"I found the record for {parsed_query.execution_plan.get('id_column')} {parsed_query.execution_plan.get('id_value')}:\n{kv_desc}"
+            elif isinstance(result, (pd.DataFrame, pd.Series)):
                 context.explanation = f"Found {len(result)} records matching your query."
             else:
                 context.explanation = f"Calculated result: {result}"
@@ -555,26 +663,58 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
             print(audit_log)
             
         # Jump directly to serialization and response
+        print(f"[API QUERY] Response serialization: formatting deterministic result")
         t_start_fmt = time.time()
         result = context.raw_result
+        # Determine if user requested show all
+        show_all = any(x in question.lower() for x in ["show all", "all rows", "all records", "everything"])
+        limit_rows = 15
+        
         if isinstance(result, pd.DataFrame):
+            # Convert datetime/Timestamp columns to string to avoid JSON serialization TypeError
+            for col in result.columns:
+                if pd.api.types.is_datetime64_any_dtype(result[col]):
+                    result[col] = result[col].astype(str)
+            # Replace NaN/NaT with None for safe JSON serialization
+            import numpy as np
+            result = result.replace({np.nan: None, pd.NaT: None})
             dataset_rows = len(result)
+            
+            # Capped preview formatting
+            if not show_all and dataset_rows > limit_rows:
+                result_preview = result.head(limit_rows)
+            else:
+                result_preview = result
+                
+            result_preview_str = json.dumps(result_preview.to_dict(orient="records"))
+            
             if dataset_rows > 100:
                 os.makedirs(RESULTS_DIR, exist_ok=True)
                 parquet_filename = f"{str(uuid.uuid4())}.parquet"
                 result_file_path = os.path.join(RESULTS_DIR, parquet_filename)
                 result.to_parquet(result_file_path)
-                result_preview_str = json.dumps(result.head(100).to_dict(orient="records"))
             else:
-                result_preview_str = json.dumps(result.to_dict(orient="records"))
                 result_file_path = ""
         elif isinstance(result, pd.Series):
-            series_dict = [{"Index": str(k), "Value": str(v)} for k, v in result.items()]
+            if pd.api.types.is_datetime64_any_dtype(result):
+                result = result.astype(str)
+            if pd.api.types.is_datetime64_any_dtype(result.index):
+                result.index = result.index.astype(str)
+            import numpy as np
+            result = result.replace({np.nan: None, pd.NaT: None})
+            
+            if not show_all and len(result) > limit_rows:
+                result_preview = result.head(limit_rows)
+            else:
+                result_preview = result
+                
+            series_dict = [{"Index": str(k), "Value": str(v)} for k, v in result_preview.items()]
             result_preview_str = json.dumps(series_dict)
             result_file_path = ""
         else:
             result_preview_str = json.dumps([{"Result": str(result)}])
             result_file_path = ""
+        print(f"[API QUERY] Response serialization: formatting complete")
         timings["Formatting"] = time.time() - t_start_fmt
         
         t_start_ser = time.time()
@@ -671,10 +811,12 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
             "engine_used": engine_type,
             "debug_info": debug_info
         }
+        print(f"[API QUERY] SSE event: type=success")
         yield json.dumps(final_payload) + "\n"
         return
 
     # Step 5: Code Generation
+    print(f"[API QUERY] SSE event: type=progress, step=Generating SQL/Pandas Code")
     yield json.dumps({"type": "progress", "step": "Generating SQL/Pandas Code"}) + "\n"
     
     t_start_prompt = time.time()
@@ -819,6 +961,7 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
     auto_retry_count = 0
     
     if engine_type not in ["metadata", "general_chat", "insight"]:
+        print(f"[API QUERY] SSE event: type=progress, step=Executing Sandbox")
         yield json.dumps({"type": "progress", "step": "Executing Sandbox"}) + "\n"
         
         t_start = time.time()
@@ -951,13 +1094,26 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
     dataset_rows = len(result) if isinstance(result, (pd.DataFrame, pd.Series)) else 1
     context.rows = dataset_rows
     
+    print(f"[API QUERY] SSE event: type=progress, step=Formatting Results")
     yield json.dumps({"type": "progress", "step": "Formatting Results"}) + "\n"
     
     # Step 7: Conditional Explanation Generation
     explanation = context.explanation
-    wants_explain = config.settings.get("explain_mode", False) is True or any(w in question.lower() for w in ["explain", "summary", "insight", "interpretation", "why"])
+    wants_explain = engine_type not in ["metadata", "general_chat"]
     
+    # Determine explanation level
+    explanation_level = "Normal"
+    if "ceo" in question.lower() or "executive" in question.lower():
+        explanation_level = "Executive"
+    elif "technically" in question.lower() or "technical" in question.lower() or "code" in question.lower():
+        explanation_level = "Technical"
+    elif "briefly" in question.lower() or "quick" in question.lower() or "short" in question.lower():
+        explanation_level = "Quick"
+    elif "detailed" in question.lower() or "detail" in question.lower():
+        explanation_level = "Detailed"
+        
     if wants_explain and not explanation:
+        print(f"[API QUERY] SSE event: type=progress, step=Generating Explanation")
         yield json.dumps({"type": "progress", "step": "Generating Explanation"}) + "\n"
         t_start = time.time()
         
@@ -969,7 +1125,8 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
         summary_prompt = prompt_builder.build_prompt(
             "explanation",
             question=question,
-            result_str=result_preview
+            result_str=result_preview,
+            explanation_level=explanation_level
         )
         try:
             explanation, _ = manager.call_llm_with_fallback(summary_prompt, model, temperature)
@@ -987,6 +1144,9 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
     has_chart = os.path.exists(chart_html_path)
     active_chart_id = chart_uuid if has_chart else None
     
+    show_all = any(x in question.lower() for x in ["show all", "all rows", "all records", "everything"])
+    limit_rows = 15
+    
     if isinstance(result, pd.DataFrame):
         # Cap result rows
         if dataset_rows > 10000:
@@ -997,20 +1157,35 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
             if pd.api.types.is_datetime64_any_dtype(result[col]):
                 result[col] = result[col].astype(str)
                 
+        import numpy as np
+        result = result.replace({np.nan: None, pd.NaT: None})
+        
+        if not show_all and dataset_rows > limit_rows:
+            result_preview = result.head(limit_rows)
+        else:
+            result_preview = result
+            
+        result_preview_str = json.dumps(result_preview.to_dict(orient="records"))
+        
         if dataset_rows > 100:
-            # Save file in Parquet format in results dir
             os.makedirs(RESULTS_DIR, exist_ok=True)
             parquet_filename = f"{str(uuid.uuid4())}.parquet"
             result_file_path = os.path.join(RESULTS_DIR, parquet_filename)
             result.to_parquet(result_file_path)
-            
-            # Send first 50 rows, then stream next 50 (chunking)
-            result_preview_str = json.dumps(result.head(100).to_dict(orient="records"))
         else:
-            result_preview_str = json.dumps(result.to_dict(orient="records"))
+            result_file_path = ""
     elif isinstance(result, pd.Series):
-        series_dict = [{"Index": str(k), "Value": str(v)} for k, v in result.items()]
+        import numpy as np
+        result = result.replace({np.nan: None, pd.NaT: None})
+        
+        if not show_all and len(result) > limit_rows:
+            result_preview = result.head(limit_rows)
+        else:
+            result_preview = result
+            
+        series_dict = [{"Index": str(k), "Value": str(v)} for k, v in result_preview.items()]
         result_preview_str = json.dumps(series_dict)
+        result_file_path = ""
     else:
         result_preview_str = json.dumps([{"Result": str(result)}])
 
@@ -1103,6 +1278,7 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
         "engine_used": engine_type,
         "debug_info": debug_info
     }
+    print(f"[API QUERY] SSE event: type=success")
     yield json.dumps(final_payload) + "\n"
 
 @router.post("/query")

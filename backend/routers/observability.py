@@ -8,4 +8,5 @@ def get_stats():
     """
     Returns aggregated telemetry statistics for the observability dashboard.
     """
-    return get_telemetry_stats()
+    from backend.services.telemetry import TelemetryService
+    return TelemetryService().get_aggregated_telemetry()

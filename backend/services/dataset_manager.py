@@ -45,7 +45,7 @@ def get_fernet() -> Fernet:
 
 def detect_date_columns(df: pd.DataFrame) -> list:
     date_cols = []
-    date_keywords = ["date", "joined", "hired", "order", "created", "invoice"]
+    date_keywords = ["date", "joined", "hired", "order_date", "order date", "order_time", "order time", "created", "invoice"]
     for col in df.columns:
         col_lower = col.lower()
         if any(kw in col_lower for kw in date_keywords):
@@ -274,16 +274,16 @@ class DatasetManager:
         """
         Thread-safe dataset switching with complete memory cleanup and cache resets.
         """
+        self.activate_datasets_multiple([dataset_id])
+
+    def activate_datasets_multiple(self, dataset_ids: list):
+        """
+        Thread-safe multi-dataset activation. Loads all specified datasets into config.datasets.
+        """
         with dataset_lock:
             conn = db.get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM datasets WHERE id = ?", (dataset_id,))
-            row = cursor.fetchone()
             
-            if not row:
-                conn.close()
-                raise ValueError("Dataset not found.")
-                
             # Perform complete memory cleanup
             config.datasets.clear()
             config.database_engine = None
@@ -301,52 +301,61 @@ class DatasetManager:
             
             # Switch registry statuses
             cursor.execute("UPDATE datasets SET is_active = 0, status = 'inactive'")
-            cursor.execute("UPDATE datasets SET is_active = 1, status = 'active', last_used_time = ? WHERE id = ?", (datetime.now(), dataset_id))
+            
+            loaded_dfs = {}
+            for ds_id in dataset_ids:
+                cursor.execute("SELECT * FROM datasets WHERE id = ?", (ds_id,))
+                row = cursor.fetchone()
+                if not row:
+                    continue
+                    
+                cursor.execute("UPDATE datasets SET is_active = 1, status = 'active', last_used_time = ? WHERE id = ?", (datetime.now(), ds_id))
+                
+                if row["type"] == "file":
+                    filepath = os.path.join(DATA_DIR, row["filename"])
+                    ext = os.path.splitext(row["filename"])[1].lower()
+                    
+                    if ext == ".csv":
+                        df = pd.read_csv(filepath)
+                    else:
+                        df = pd.read_excel(filepath)
+                        
+                    # Convert dates if specified in registry metadata
+                    try:
+                        date_cols_str = row["date_columns"]
+                        if date_cols_str:
+                            date_cols = json.loads(date_cols_str)
+                            for col in date_cols:
+                                if col in df.columns:
+                                    df[col] = pd.to_datetime(df[col], errors="coerce")
+                    except Exception:
+                        pass
+                        
+                    loaded_dfs[row["name"]] = df
+                    config.current_source_type = "file"
+                else:
+                    # Re-establish SQL Engine connection
+                    creds = self.decrypt_credentials(row["connection_info"])
+                    from backend.services.loader import create_db_engine
+                    engine_obj, flavor = create_db_engine(
+                        db_type=row["source"].lower(),
+                        sqlite_path=creds.get("sqlite_path"),
+                        host=creds.get("host", "localhost"),
+                        port=creds.get("port"),
+                        db_name=creds.get("db_name", ""),
+                        username=creds.get("username", ""),
+                        password=creds.get("password", "")
+                    )
+                    config.database_engine = engine_obj
+                    config.db_flavor = flavor
+                    config.current_source_type = "sql"
+                    # Auto-fix BOM-prefixed column names in SQL databases
+                    self._fix_bom_columns(engine_obj, flavor)
+                    
+            config.datasets = loaded_dfs
             conn.commit()
             conn.close()
             
-            # Reload dataset into memory
-            if row["type"] == "file":
-                filepath = os.path.join(DATA_DIR, row["filename"])
-                ext = os.path.splitext(row["filename"])[1].lower()
-                
-                if ext == ".csv":
-                    df = pd.read_csv(filepath)
-                else:
-                    df = pd.read_excel(filepath)
-                    
-                # Convert dates if specified in registry metadata
-                try:
-                    date_cols_str = row["date_columns"]
-                    if date_cols_str:
-                        date_cols = json.loads(date_cols_str)
-                        for col in date_cols:
-                            if col in df.columns:
-                                df[col] = pd.to_datetime(df[col], errors="coerce")
-                except Exception:
-                    pass
-                    
-                config.datasets = {row["name"]: df}
-                config.current_source_type = "file"
-            else:
-                # Re-establish SQL Engine connection
-                creds = self.decrypt_credentials(row["connection_info"])
-                from backend.services.loader import create_db_engine
-                engine_obj, flavor = create_db_engine(
-                    db_type=row["source"].lower(),
-                    sqlite_path=creds.get("sqlite_path"),
-                    host=creds.get("host", "localhost"),
-                    port=creds.get("port"),
-                    db_name=creds.get("db_name", ""),
-                    username=creds.get("username", ""),
-                    password=creds.get("password", "")
-                )
-                config.database_engine = engine_obj
-                config.db_flavor = flavor
-                config.current_source_type = "sql"
-                # Auto-fix BOM-prefixed column names in SQL databases
-                self._fix_bom_columns(engine_obj, flavor)
-                
             # Force trigger garbage collection
             gc.collect()
 

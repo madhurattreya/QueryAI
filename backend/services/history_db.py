@@ -95,6 +95,117 @@ def init_db():
     )
     """)
     
+    # 5. Create relationships table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS relationships (
+        id TEXT PRIMARY KEY,
+        source_dataset_id TEXT,
+        source_column TEXT,
+        target_dataset_id TEXT,
+        target_column TEXT,
+        relationship_type TEXT,
+        is_user_defined INTEGER DEFAULT 0,
+        confidence REAL DEFAULT 1.0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    
+    # 6. Create semantic_model table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS semantic_model (
+        id TEXT PRIMARY KEY,
+        dataset_id TEXT,
+        name TEXT,
+        type TEXT,
+        expression TEXT,
+        definition TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    
+    # 7. Create dashboards table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS dashboards (
+        id TEXT PRIMARY KEY,
+        title TEXT,
+        layout TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    
+    # 8. Create scheduler_jobs table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS scheduler_jobs (
+        id TEXT PRIMARY KEY,
+        dashboard_id TEXT,
+        cron_expression TEXT,
+        export_format TEXT,
+        email_recipient TEXT,
+        last_run_time TIMESTAMP,
+        status TEXT DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    
+    # 9. Create alerts table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS alerts (
+        id TEXT PRIMARY KEY,
+        dataset_id TEXT,
+        metric_column TEXT,
+        condition TEXT,
+        threshold_value REAL,
+        email_recipient TEXT,
+        last_checked_time TIMESTAMP,
+        triggered INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    
+    # 10. Create audit_logs table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS audit_logs (
+        id TEXT PRIMARY KEY,
+        username TEXT,
+        action TEXT,
+        details TEXT,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    
+    # 11. Create comments table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS comments (
+        id TEXT PRIMARY KEY,
+        dashboard_id TEXT,
+        username TEXT,
+        comment TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    
+    # 12. Create favorites table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS favorites (
+        id TEXT PRIMARY KEY,
+        username TEXT,
+        query TEXT,
+        title TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    
+    # 13. Create telemetry_logs table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS telemetry_logs (
+        id TEXT PRIMARY KEY,
+        metric_name TEXT,
+        metric_value REAL,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    
     # Migrations for datasets table
     for col, col_type in [
         ("filename", "TEXT"),

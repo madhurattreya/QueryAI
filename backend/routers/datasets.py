@@ -8,6 +8,9 @@ router = APIRouter(prefix="/api")
 class ActivateRequest(BaseModel):
     id: str
 
+class ActivateMultipleRequest(BaseModel):
+    ids: list[str]
+
 class RenameRequest(BaseModel):
     id: str
     name: str
@@ -33,6 +36,18 @@ def set_active_dataset_endpoint(req: ActivateRequest):
         manager = DatasetManager()
         manager.activate_dataset_by_id(req.id)
         return {"status": "success", "message": f"Activated dataset {req.id}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/datasets/active/multiple")
+def set_active_datasets_endpoint(req: ActivateMultipleRequest):
+    """
+    Thread-safe multi-activation switcher.
+    """
+    try:
+        manager = DatasetManager()
+        manager.activate_datasets_multiple(req.ids)
+        return {"status": "success", "message": f"Activated datasets {req.ids}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

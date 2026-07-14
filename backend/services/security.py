@@ -93,3 +93,44 @@ def validate_sql(query_str: str):
         raise ValueError(f"Security block: Forbidden SQL keyword(s) detected: {', '.join(found_forbidden)}")
         
     return True
+
+# ----------------- RBAC & Audit Logging -----------------
+import uuid
+import backend.services.history_db as db
+
+# Role permission registry
+ROLE_PERMISSIONS = {
+    "Admin": {"view_dataset", "edit_dataset", "delete_dataset", "create_measure", "create_dashboard", "edit_dashboard", "delete_dashboard", "scheduler_reports"},
+    "Analyst": {"view_dataset", "create_measure", "create_dashboard", "edit_dashboard", "delete_dashboard"},
+    "Viewer": {"view_dataset"}
+}
+
+def check_permission(role: str, action: str) -> bool:
+    """
+    Checks if a role is permitted to perform a specific action.
+    """
+    allowed_actions = ROLE_PERMISSIONS.get(role, set())
+    if action in allowed_actions:
+        return True
+    return False
+
+def log_audit_action(username: str, action: str, details: str):
+    """
+    Saves security actions & query runs to SQLite audit log.
+    """
+    try:
+        conn = db.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO audit_logs (id, username, action, details)
+            VALUES (?, ?, ?, ?)
+            """,
+            (str(uuid.uuid4()), username, action, details)
+        )
+        conn.commit()
+        conn.close()
+        print(f"[AUDIT LOG] {username} performed action: '{action}' ({details})")
+    except Exception as e:
+        print(f"[AUDIT LOG WARNING] Logging failed: {e}")
+

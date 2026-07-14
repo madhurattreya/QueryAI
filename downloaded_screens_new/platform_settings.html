@@ -1,0 +1,315 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>EICE AI Analyst - Settings</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@100..900&amp;family=Inter:wght@100..900&amp;family=JetBrains+Mono:wght@100..900&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "outline": "#757681",
+                      "surface": "#f9f9fa",
+                      "charcoal-black": "#010A14",
+                      "primary-container": "#012060",
+                      "secondary-container": "#2abcfe",
+                      "on-secondary-fixed": "#001e2d",
+                      "on-secondary": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed": "#dbe1ff",
+                      "surface-bright": "#f9f9fa",
+                      "surface-variant": "#e2e2e3",
+                      "inverse-surface": "#2f3132",
+                      "inverse-primary": "#b4c5ff",
+                      "tertiary-fixed-dim": "#bbc8d6",
+                      "surface-container-highest": "#e2e2e3",
+                      "on-tertiary-fixed-variant": "#3c4854",
+                      "on-secondary-container": "#004966",
+                      "on-tertiary-fixed": "#111d27",
+                      "deep-navy": "#012060",
+                      "secondary-fixed": "#c6e7ff",
+                      "on-error": "#ffffff",
+                      "secondary-fixed-dim": "#81cfff",
+                      "surface-container": "#eeeeef",
+                      "surface-dim": "#dadadb",
+                      "on-secondary-fixed-variant": "#004c6b",
+                      "surface-white": "#FFFFFF",
+                      "tertiary-fixed": "#d7e4f3",
+                      "error-container": "#ffdad6",
+                      "on-primary-container": "#748acf",
+                      "on-background": "#1a1c1d",
+                      "tertiary-container": "#1b2732",
+                      "primary": "#000d34",
+                      "on-tertiary-container": "#828e9c",
+                      "on-primary-fixed-variant": "#2d4383",
+                      "surface-tint": "#465b9d",
+                      "surface-container-low": "#f3f3f4",
+                      "background": "#f9f9fa",
+                      "vibrant-blue": "#01B0F1",
+                      "on-tertiary": "#ffffff",
+                      "on-primary-fixed": "#00174b",
+                      "tertiary": "#06121c",
+                      "surface-container-high": "#e8e8e9",
+                      "outline-variant": "#c5c6d2",
+                      "error": "#ba1a1a",
+                      "on-surface": "#1a1c1d",
+                      "secondary": "#00658c",
+                      "on-surface-variant": "#444650",
+                      "on-error-container": "#93000a",
+                      "neutral-muted": "#F4F4F5",
+                      "on-primary": "#ffffff",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "inverse-on-surface": "#f0f1f2"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "gutter": "24px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "32px",
+                      "max-width": "1440px"
+              },
+              "fontFamily": {
+                      "label-sm": ["JetBrains Mono"],
+                      "headline-lg-mobile": ["Hanken Grotesk"],
+                      "body-lg": ["Inter"],
+                      "headline-lg": ["Hanken Grotesk"],
+                      "headline-md": ["Hanken Grotesk"],
+                      "display-lg": ["Hanken Grotesk"],
+                      "body-md": ["Inter"],
+                      "label-md": ["JetBrains Mono"],
+                      "body-sm": ["Inter"]
+              },
+              "fontSize": {
+                      "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "500"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md text-body-md flex min-h-screen">
+<!-- JSON Component: SideNavBar -->
+<aside class="fixed left-0 top-0 h-full flex flex-col z-40 bg-charcoal-black w-[280px] hidden md:flex transition-transform">
+<!-- Header -->
+<div class="p-6 flex items-center gap-4 border-b border-tertiary-container/50">
+<img alt="EICE Tech Logo" class="w-10 h-10 rounded-lg object-cover" data-alt="A minimalist tech logo for EICE Technology featuring abstract geometric shapes in deep navy and vibrant blue, set against a transparent background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0F9AyQHiR6tGLWMWD_P2WycCuHEcXtkZb_OS9q-lPNH2_j5HKW4xKwNOIWZSESAE9IIuhMGGGZ-nnLaUUPS9TRm7nbnBxTT621LwuE_A6FZtdXDT8FXxmJQgtRWALayDVZVStFPDb8naYNsHvFkUYl7-j4LavVTm_Wg88CK9JJaYKl22QeVGNCgLertVY2LHCiHaQQMG6x_Ola3Ilu50QheGex4mpuIPvHRCowkEC0AxLR3ndZ2Tk">
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-white">QueryIQ</h1>
+<p class="font-body-sm text-body-sm text-surface-variant">AI Data Engine</p>
+</div>
+</div>
+<!-- CTA -->
+<div class="p-4">
+<button class="w-full bg-vibrant-blue text-white font-label-md text-label-md py-3 rounded-lg hover:bg-secondary-container transition-colors shadow-sm flex justify-center items-center gap-2">
+<span class="material-symbols-outlined">add</span>
+                New Analysis
+            </button>
+</div>
+<!-- Main Navigation -->
+<nav class="flex-1 py-4 flex flex-col gap-1 overflow-y-auto">
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-tertiary-container hover:text-white transition-all font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">home</span>
+                Home
+            </a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-tertiary-container hover:text-white transition-all font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">database</span>
+                Datasets
+            </a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-tertiary-container hover:text-white transition-all font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">code</span>
+                SQL Editor
+            </a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-tertiary-container hover:text-white transition-all font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">history</span>
+                Chat History
+            </a>
+<!-- Active Tab -->
+<a class="flex items-center gap-3 bg-primary-container text-vibrant-blue border-l-4 border-vibrant-blue px-4 py-3 scale-95 duration-150 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings</span>
+                Settings
+            </a>
+</nav>
+<!-- Footer Navigation -->
+<div class="p-4 border-t border-tertiary-container/50">
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-tertiary-container hover:text-white transition-all font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">help</span>
+                Documentation
+            </a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-tertiary-container hover:text-white transition-all font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">contact_support</span>
+                Support
+            </a>
+</div>
+</aside>
+<!-- Main Canvas Area -->
+<div class="flex-1 md:ml-[280px] flex flex-col w-full pb-16 md:pb-0 relative">
+<!-- JSON Component: TopNavBar -->
+<header class="flex justify-between items-center w-full px-margin-desktop h-16 bg-surface shadow-sm sticky top-0 z-30">
+<div class="md:hidden">
+<span class="font-headline-md text-headline-md font-bold text-deep-navy">QueryIQ</span>
+</div>
+<!-- Hidden on mobile if SideNav exists logically, but shown per rules for desktop -->
+<nav class="hidden md:flex gap-8 items-center h-full">
+<a class="text-on-surface-variant hover:text-vibrant-blue transition-colors font-label-md text-label-md flex items-center h-full" href="#">Workspace</a>
+<a class="text-on-surface-variant hover:text-vibrant-blue transition-colors font-label-md text-label-md flex items-center h-full" href="#">Datasets</a>
+<a class="text-on-surface-variant hover:text-vibrant-blue transition-colors font-label-md text-label-md flex items-center h-full" href="#">Analytics</a>
+</nav>
+<div class="flex items-center gap-4 text-primary">
+<!-- Search on Right (Implicitly an icon or input) -->
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-vibrant-blue transition-colors">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-vibrant-blue transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-vibrant-blue transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<img alt="User profile" class="w-8 h-8 rounded-full border-2 border-surface object-cover" data-alt="A professional headshot of a business executive in a modern office environment, warm lighting, shallow depth of field." src="https://lh3.googleusercontent.com/aida-public/AB6AXuATtNYVgNNlfUz59jIRbGruKCtRsXFDJwPWSzSxwx1QKf5ifUAG7PfjQW1hzPfT1J03eaRC-PxqyTB8VENhC3AZRjgPhGENoznJvU0OeM8ToKoFDxJNoBDT8ceQFDVjp1lP7UN7y4Rmb8uyPb1CPQKSEln4m0Q8gyN4n07njUbMGY2LE5HSuS0SBKj6Dg-973hwxPnaFc7OLBZGn3pVxBboNKFc59eNHJ0enZOR8PC_KTor2m7kn63D">
+</div>
+</header>
+<!-- Settings Content Canvas -->
+<main class="flex-1 w-full max-w-max-width mx-auto p-margin-mobile md:p-margin-desktop">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-deep-navy mb-8">Settings</h2>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Internal Settings Sidebar -->
+<div class="col-span-1 md:col-span-3">
+<nav class="flex flex-col gap-2">
+<a class="px-4 py-2.5 rounded-lg bg-surface-container-high text-deep-navy font-label-md text-label-md font-bold flex items-center justify-between" href="#">
+                            AI Models
+                            <span class="material-symbols-outlined text-vibrant-blue text-sm">chevron_right</span>
+</a>
+<a class="px-4 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md text-label-md" href="#">Appearance</a>
+<a class="px-4 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md text-label-md" href="#">Data Privacy</a>
+<a class="px-4 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md text-label-md" href="#">Advanced</a>
+</nav>
+</div>
+<!-- Settings Forms Area -->
+<div class="col-span-1 md:col-span-9 space-y-8">
+<!-- Card: AI Models -->
+<div class="bg-surface-white rounded-xl border border-outline-variant p-6 shadow-sm">
+<div class="mb-6">
+<h3 class="font-headline-md text-headline-md text-deep-navy">AI Models</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Configure the default analytical engines and parameters for your workspace.</p>
+</div>
+<div class="space-y-6 max-w-2xl">
+<!-- Field: Default Model -->
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface">Default Model</label>
+<select class="w-full bg-surface-white border border-outline-variant rounded-lg px-4 py-2.5 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-vibrant-blue focus:border-transparent text-on-surface">
+<option>GPT-4</option>
+<option>Claude 3.5</option>
+<option>Gemini 1.5</option>
+</select>
+</div>
+<!-- Field: Creativity Slider -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-end">
+<label class="font-label-md text-label-md text-on-surface">Creativity (Temperature)</label>
+<span class="font-label-sm text-label-sm text-vibrant-blue">0.7</span>
+</div>
+<input class="w-full h-2 bg-surface-container rounded-lg appearance-none cursor-pointer accent-vibrant-blue" max="1" min="0" step="0.1" type="range" value="0.7">
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span class="">Precise</span>
+<span class="">Creative</span>
+</div>
+</div>
+<!-- Field: Max Tokens -->
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface">Max Tokens</label>
+<input class="w-full max-w-[200px] bg-surface-white border border-outline-variant rounded-lg px-4 py-2.5 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-vibrant-blue focus:border-transparent text-on-surface" type="number" value="4096">
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Maximum number of tokens to generate in a single response.</p>
+</div>
+<div class="pt-4 border-t border-outline-variant/50">
+<button class="bg-deep-navy text-white px-6 py-2 rounded-lg font-label-md text-label-md hover:bg-primary transition-colors">Save Changes</button>
+</div>
+</div>
+</div>
+<!-- Card: Appearance -->
+<div class="bg-surface-white rounded-xl border border-outline-variant p-6 shadow-sm">
+<div class="mb-6">
+<h3 class="font-headline-md text-headline-md text-deep-navy">Appearance</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Customize the interface theme.</p>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
+<!-- Light Mode Select -->
+<label class="cursor-pointer">
+<input checked="" class="peer sr-only" name="theme" type="radio">
+<div class="border-2 border-outline-variant rounded-xl p-4 peer-checked:border-vibrant-blue peer-checked:bg-secondary-fixed/10 transition-all flex flex-col items-center gap-3">
+<div class="w-full h-20 bg-surface-white border border-outline-variant rounded-md shadow-sm flex items-center justify-center">
+<span class="material-symbols-outlined text-outline-variant">light_mode</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface font-bold">Light</span>
+</div>
+</label>
+<!-- Dark Mode Select -->
+<label class="cursor-pointer">
+<input class="peer sr-only" name="theme" type="radio">
+<div class="border-2 border-outline-variant rounded-xl p-4 peer-checked:border-vibrant-blue peer-checked:bg-secondary-fixed/10 transition-all flex flex-col items-center gap-3">
+<div class="w-full h-20 bg-charcoal-black border border-outline-variant rounded-md shadow-sm flex items-center justify-center">
+<span class="material-symbols-outlined text-surface-variant">dark_mode</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface font-bold">Dark</span>
+</div>
+</label>
+<!-- System Mode Select -->
+<label class="cursor-pointer">
+<input class="peer sr-only" name="theme" type="radio">
+<div class="border-2 border-outline-variant rounded-xl p-4 peer-checked:border-vibrant-blue peer-checked:bg-secondary-fixed/10 transition-all flex flex-col items-center gap-3">
+<div class="w-full h-20 bg-gradient-to-br from-surface-white to-charcoal-black border border-outline-variant rounded-md shadow-sm flex items-center justify-center relative overflow-hidden">
+<div class="absolute inset-0 bg-surface-white w-1/2"></div>
+<span class="material-symbols-outlined text-outline-variant relative z-10 mix-blend-difference text-white">brightness_auto</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface font-bold">System</span>
+</div>
+</label>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- JSON Component: BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-between items-center px-4 py-1 h-8 bg-surface-container-highest border-t border-outline-variant">
+<div class="text-on-surface-variant flex items-center gap-2 font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px]">psychology</span>
+<span class="hidden sm:inline">Model: GPT-4</span>
+</div>
+<div class="text-on-surface-variant flex items-center gap-2 font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px]">memory</span>
+<span class="hidden sm:inline">Memory: 1.2GB</span>
+</div>
+<div class="text-on-surface-variant flex items-center gap-2 font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+<span class="hidden sm:inline">Status: Operational</span>
+</div>
+</nav>
+
+
+</body></html>

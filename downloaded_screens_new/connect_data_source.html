@@ -1,0 +1,355 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>EICE AI Analyst - Data Source Connection</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#757681",
+                        "surface": "#f9f9fa",
+                        "charcoal-black": "#010A14",
+                        "primary-container": "#012060",
+                        "secondary-container": "#2abcfe",
+                        "on-secondary-fixed": "#001e2d",
+                        "on-secondary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#dbe1ff",
+                        "surface-bright": "#f9f9fa",
+                        "surface-variant": "#e2e2e3",
+                        "inverse-surface": "#2f3132",
+                        "inverse-primary": "#b4c5ff",
+                        "tertiary-fixed-dim": "#bbc8d6",
+                        "surface-container-highest": "#e2e2e3",
+                        "on-tertiary-fixed-variant": "#3c4854",
+                        "on-secondary-container": "#004966",
+                        "on-tertiary-fixed": "#111d27",
+                        "deep-navy": "#012060",
+                        "secondary-fixed": "#c6e7ff",
+                        "on-error": "#ffffff",
+                        "secondary-fixed-dim": "#81cfff",
+                        "surface-container": "#eeeeef",
+                        "surface-dim": "#dadadb",
+                        "on-secondary-fixed-variant": "#004c6b",
+                        "surface-white": "#FFFFFF",
+                        "tertiary-fixed": "#d7e4f3",
+                        "error-container": "#ffdad6",
+                        "on-primary-container": "#748acf",
+                        "on-background": "#1a1c1d",
+                        "tertiary-container": "#1b2732",
+                        "primary": "#000d34",
+                        "on-tertiary-container": "#828e9c",
+                        "on-primary-fixed-variant": "#2d4383",
+                        "surface-tint": "#465b9d",
+                        "surface-container-low": "#f3f3f4",
+                        "background": "#f9f9fa",
+                        "vibrant-blue": "#01B0F1",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#00174b",
+                        "tertiary": "#06121c",
+                        "surface-container-high": "#e8e8e9",
+                        "outline-variant": "#c5c6d2",
+                        "error": "#ba1a1a",
+                        "on-surface": "#1a1c1d",
+                        "secondary": "#00658c",
+                        "on-surface-variant": "#444650",
+                        "on-error-container": "#93000a",
+                        "neutral-muted": "#F4F4F5",
+                        "on-primary": "#ffffff",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "inverse-on-surface": "#f0f1f2"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "gutter": "24px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "32px",
+                        "max-width": "1440px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-md": ["JetBrains Mono"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .material-symbols-outlined.fill { font-variation-settings: 'FILL' 1; }
+        /* Custom Scrollbar for sleekness */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #c5c6d2; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #757681; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md min-h-screen flex antialiased">
+<!-- SideNavBar (Desktop) -->
+<aside class="hidden md:flex flex-col bg-charcoal-black fixed left-0 top-0 h-full w-[280px] z-40">
+<!-- Header -->
+<div class="p-6 flex items-center gap-3">
+<img class="w-8 h-8 rounded-full object-cover" data-alt="A stylized logo icon suitable for a modern AI Data Engine platform, featuring abstract geometric nodes or a sleek monogram in deep navy and vibrant blue colors, set against a dark background, conveying a sense of high technology and data processing." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC46v6Ml6elur_EeElYCFqhJOM_VABCVPH_l1LuMLX0bwIDSXZ9stuzvX0iUIMLY17bFTlQv29m1oBGM-8XUJDLX4Yao7yovr2u83ZdN0h1yW94RVkkDxiMqahraWNE8Pfi3b0DTDuJiTgW086dX2wjULb47KlnuTthldKjYRmq4taQ4pPcePfjvLqrkxxSFhqxwifW2jNu7WIDxXTMk17HLC6zpUlx44wPI9_fz_0Y5_Sco6F_Mt4B">
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-white tracking-tight">QueryIQ</h2>
+<p class="font-body-sm text-body-sm text-vibrant-blue">AI Data Engine</p>
+</div>
+</div>
+<!-- Main Navigation -->
+<nav class="flex-1 mt-4 space-y-1 px-3">
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 rounded-lg hover:bg-tertiary-container hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-body-md text-body-md">Home</span>
+</a>
+<a class="flex items-center gap-3 bg-primary-container text-vibrant-blue border-l-4 border-vibrant-blue px-4 py-3 rounded-r-lg opacity-80 scale-95 duration-150" href="#">
+<span class="material-symbols-outlined fill">database</span>
+<span class="font-body-md text-body-md font-medium">Datasets</span>
+</a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 rounded-lg hover:bg-tertiary-container hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">code</span>
+<span class="font-body-md text-body-md">SQL Editor</span>
+</a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 rounded-lg hover:bg-tertiary-container hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-body-md text-body-md">Chat History</span>
+</a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 rounded-lg hover:bg-tertiary-container hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</nav>
+<!-- CTA & Footer Nav -->
+<div class="p-6">
+<button class="w-full bg-vibrant-blue text-white font-body-md text-body-md py-2.5 rounded-lg font-medium hover:bg-secondary-container transition-colors shadow-sm mb-6 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                New Analysis
+            </button>
+<div class="space-y-1">
+<a class="flex items-center gap-3 text-surface-variant px-4 py-2 rounded-lg hover:bg-tertiary-container hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span>
+<span class="font-body-sm text-body-sm">Documentation</span>
+</a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-2 rounded-lg hover:bg-tertiary-container hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">contact_support</span>
+<span class="font-body-sm text-body-sm">Support</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<div class="flex-1 flex flex-col md:ml-[280px] min-h-screen pb-16 md:pb-8">
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-charcoal-black shadow-sm flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop h-16 sticky top-0 z-30">
+<div class="flex items-center gap-6">
+<!-- Brand (Mobile only, Desktop has Sidebar) -->
+<div class="md:hidden font-headline-md text-headline-md font-bold text-deep-navy dark:text-vibrant-blue tracking-tight">QueryIQ</div>
+<!-- Desktop Nav Links -->
+<nav class="hidden md:flex items-center gap-6">
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-surface-variant hover:text-vibrant-blue transition-colors" href="#">Workspace</a>
+<a class="font-label-md text-label-md text-vibrant-blue border-b-2 border-vibrant-blue pb-1 opacity-80" href="#">Datasets</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-surface-variant hover:text-vibrant-blue transition-colors" href="#">Analytics</a>
+</nav>
+</div>
+<!-- Trailing Actions & Profile -->
+<div class="flex items-center gap-4">
+<div class="hidden sm:flex items-center bg-surface-container-low rounded-lg px-3 py-1.5 border border-outline-variant/30 focus-within:border-vibrant-blue focus-within:ring-1 focus-within:ring-vibrant-blue transition-all">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm w-48 py-0.5 px-2 text-on-surface placeholder-on-surface-variant" placeholder="Search data..." type="text">
+</div>
+<button class="text-on-surface-variant hover:text-vibrant-blue transition-colors p-1">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-vibrant-blue transition-colors p-1 hidden sm:block">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant/50 ml-2">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="A professional headshot of a person, suitable for a user profile image in a modern enterprise software application, soft natural lighting, neutral background, conveying trust and competence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWxV4QKW8F_h1lHm0otgrX5da1T5K8R7oa8IoH_MOgLPY54UTsVI2wj2NZqlkr2KifTJIo8LPbZgY1JTWQR8BvMhw8jPlf59KERrJ9bkwV7GQb30S09N0lChGDKWEWf_dHHw80IdXHRBqtzyHT0t0SrfoiGhFY9FQUDBAVSfSSn8o0vAmwWdnoiTk-Ls6aQPhQyeaFS0pjEC1PwIOUOwcOmnW0Ror5_nJFz3gw1Z8sAnDMOSA0W1gM">
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<main class="flex-1 p-margin-mobile md:p-margin-desktop bg-background overflow-y-auto">
+<div class="max-w-4xl mx-auto">
+<!-- Page Header -->
+<div class="mb-8">
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary tracking-tight">Connect Data Source</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2">Configure connection parameters to integrate your database with EICE Analyst.</p>
+</div>
+<!-- Main Connection Panel -->
+<div class="bg-surface-white rounded-xl border border-surface-variant shadow-[0_4px_20px_-2px_rgba(1,32,96,0.08)] overflow-hidden">
+<!-- Tabs -->
+<div class="border-b border-surface-variant bg-surface-container-lowest overflow-x-auto custom-scrollbar">
+<nav class="flex px-4 min-w-max">
+<button class="flex items-center gap-2 px-6 py-4 font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-colors border-b-2 border-transparent">
+<span class="material-symbols-outlined text-[18px]">table_chart</span>
+                                CSV
+                            </button>
+<button class="flex items-center gap-2 px-6 py-4 font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-colors border-b-2 border-transparent">
+<span class="material-symbols-outlined text-[18px]">grid_on</span>
+                                Excel
+                            </button>
+<button class="flex items-center gap-2 px-6 py-4 font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-colors border-b-2 border-transparent">
+<span class="material-symbols-outlined text-[18px]">storage</span>
+                                SQLite
+                            </button>
+<button class="flex items-center gap-2 px-6 py-4 font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-colors border-b-2 border-transparent">
+<span class="material-symbols-outlined text-[18px]">dns</span>
+                                MySQL
+                            </button>
+<button class="flex items-center gap-2 px-6 py-4 font-label-md text-label-md text-vibrant-blue bg-primary-fixed/10 border-b-2 border-vibrant-blue">
+<span class="material-symbols-outlined text-[18px] fill">dns</span>
+                                PostgreSQL
+                            </button>
+</nav>
+</div>
+<!-- Connection Form -->
+<div class="p-6 md:p-8">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline-md text-headline-md text-deep-navy">PostgreSQL Configuration</h3>
+<div class="flex items-center gap-2 bg-surface-container px-3 py-1.5 rounded-full border border-surface-dim">
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Ready to connect</span>
+</div>
+</div>
+<form class="space-y-6">
+<!-- Host & Port Row -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="md:col-span-2 space-y-2">
+<label class="font-label-md text-label-md text-on-surface block">Host</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-[20px]">public</span>
+<input class="w-full pl-10 pr-4 py-2.5 bg-surface-white border border-outline-variant/60 rounded-lg font-body-md text-body-md text-on-surface focus:border-vibrant-blue focus:ring-1 focus:ring-vibrant-blue transition-shadow placeholder-outline-variant" placeholder="e.g., db.example.com" type="text">
+</div>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface block">Port</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-[20px]">lan</span>
+<input class="w-full pl-10 pr-4 py-2.5 bg-surface-white border border-outline-variant/60 rounded-lg font-body-md text-body-md text-on-surface focus:border-vibrant-blue focus:ring-1 focus:ring-vibrant-blue transition-shadow" type="text" value="5432">
+</div>
+</div>
+</div>
+<!-- Database Name -->
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface block">Database Name</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-[20px]">data_object</span>
+<input class="w-full pl-10 pr-4 py-2.5 bg-surface-white border border-outline-variant/60 rounded-lg font-body-md text-body-md text-on-surface focus:border-vibrant-blue focus:ring-1 focus:ring-vibrant-blue transition-shadow placeholder-outline-variant" placeholder="production_db" type="text">
+</div>
+</div>
+<!-- Credentials Row -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-surface-variant">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface block">Username</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-[20px]">person</span>
+<input class="w-full pl-10 pr-4 py-2.5 bg-surface-white border border-outline-variant/60 rounded-lg font-body-md text-body-md text-on-surface focus:border-vibrant-blue focus:ring-1 focus:ring-vibrant-blue transition-shadow placeholder-outline-variant" placeholder="admin_user" type="text">
+</div>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface block">Password</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-[20px]">key</span>
+<input class="w-full pl-10 pr-4 py-2.5 bg-surface-white border border-outline-variant/60 rounded-lg font-body-md text-body-md text-on-surface focus:border-vibrant-blue focus:ring-1 focus:ring-vibrant-blue transition-shadow placeholder-outline-variant" placeholder="••••••••" type="password">
+</div>
+<p class="font-body-sm text-body-sm text-outline-variant mt-1 text-right">Credentials are encrypted securely.</p>
+</div>
+</div>
+<!-- Advanced Settings Toggle (Optional visual detail) -->
+<div class="pt-2">
+<button class="flex items-center gap-2 text-vibrant-blue font-label-md text-label-md hover:underline" type="button">
+<span class="material-symbols-outlined text-[18px]">settings_ethernet</span>
+                                    Advanced SSL Options
+                                </button>
+</div>
+<!-- Form Actions -->
+<div class="flex flex-col sm:flex-row items-center justify-end gap-4 pt-8 mt-4 border-t border-surface-variant">
+<button class="w-full sm:w-auto px-6 py-2.5 font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors border border-outline-variant/30" type="button">
+                                    Save Connection
+                                </button>
+<button class="w-full sm:w-auto px-6 py-2.5 font-label-md text-label-md text-vibrant-blue border border-vibrant-blue rounded-lg hover:bg-vibrant-blue/5 transition-colors flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined text-[18px]">cable</span>
+                                    Test Connection
+                                </button>
+<button class="w-full sm:w-auto px-8 py-2.5 font-label-md text-label-md bg-deep-navy text-white rounded-lg hover:bg-primary transition-colors shadow-sm flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined text-[18px]">login</span>
+                                    Connect
+                                </button>
+</div>
+</form>
+</div>
+</div>
+<!-- Informational Note -->
+<div class="mt-6 flex items-start gap-3 p-4 bg-primary-fixed/20 rounded-lg border border-primary-fixed">
+<span class="material-symbols-outlined text-vibrant-blue mt-0.5">info</span>
+<div>
+<h4 class="font-label-md text-label-md text-deep-navy">Secure Connection</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">EICE Analyst only requires read access to perform analysis. Ensure your database user permissions are configured appropriately.</p>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-between items-center px-4 py-1 h-8 bg-surface-container-highest dark:bg-tertiary-container">
+<div class="text-on-surface-variant flex items-center gap-2 font-label-sm text-label-sm hover:bg-surface-container-high px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[16px]">psychology</span>
+<span class="">Model: GPT-4</span>
+</div>
+<div class="text-on-surface-variant flex items-center gap-2 font-label-sm text-label-sm hover:bg-surface-container-high px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[16px]">memory</span>
+<span class="">Memory: 1.2GB</span>
+</div>
+<div class="text-vibrant-blue flex items-center gap-2 font-label-sm text-label-sm hover:bg-surface-container-high px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[16px] fill">check_circle</span>
+<span class="">Status: Operational</span>
+</div>
+</nav>
+<!-- BottomNavBar (Desktop - Docked Status Bar style as per JSON for system metrics, modified to sit at bottom of canvas instead of absolute fixed to avoid overlap issues if content is long, though json says fixed. Using fixed as per JSON instruction style_shell_layout) -->
+<nav class="hidden md:flex fixed bottom-0 left-0 w-full z-50 justify-between items-center px-4 py-1 h-8 bg-surface-container-highest dark:bg-tertiary-container border-t border-outline-variant ml-[280px] w-[calc(100%-280px)]">
+<div class="text-on-surface-variant flex items-center gap-2 font-label-sm text-label-sm hover:bg-surface-container-high px-2 rounded cursor-default">
+<span class="material-symbols-outlined text-[16px]">psychology</span>
+<span class="">Model: GPT-4</span>
+</div>
+<div class="text-on-surface-variant flex items-center gap-2 font-label-sm text-label-sm hover:bg-surface-container-high px-2 rounded cursor-default">
+<span class="material-symbols-outlined text-[16px]">memory</span>
+<span class="">Memory: 1.2GB</span>
+</div>
+<div class="text-vibrant-blue flex items-center gap-2 font-label-sm text-label-sm hover:bg-surface-container-high px-2 rounded cursor-default">
+<span class="material-symbols-outlined text-[16px] fill">check_circle</span>
+<span class="">Status: Operational</span>
+</div>
+</nav>
+
+
+</body></html>

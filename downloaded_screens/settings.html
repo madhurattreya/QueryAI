@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DataMind AI - Settings</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+        /* Custom Scrollbar for sleekness */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary": "#003915",
+                      "secondary-container": "#571bc1",
+                      "on-surface": "#dae2fd",
+                      "surface": "#0b1326",
+                      "inverse-surface": "#dae2fd",
+                      "surface-container-high": "#222a3d",
+                      "inverse-on-surface": "#283044",
+                      "on-secondary-fixed-variant": "#5516be",
+                      "on-secondary-fixed": "#23005c",
+                      "surface-dim": "#0b1326",
+                      "on-error-container": "#ffdad6",
+                      "on-primary-fixed-variant": "#004395",
+                      "on-primary-fixed": "#001a42",
+                      "secondary": "#d0bcff",
+                      "on-secondary": "#3c0091",
+                      "primary-fixed-dim": "#adc6ff",
+                      "on-secondary-container": "#c4abff",
+                      "tertiary-container": "#00a74b",
+                      "surface-container-highest": "#2d3449",
+                      "outline": "#8c909f",
+                      "primary-fixed": "#d8e2ff",
+                      "secondary-fixed-dim": "#d0bcff",
+                      "surface-container": "#171f33",
+                      "on-primary": "#002e6a",
+                      "on-tertiary-fixed-variant": "#005321",
+                      "primary": "#adc6ff",
+                      "surface-bright": "#31394d",
+                      "on-tertiary-container": "#003111",
+                      "on-tertiary-fixed": "#002109",
+                      "inverse-primary": "#005ac2",
+                      "secondary-fixed": "#e9ddff",
+                      "surface-variant": "#2d3449",
+                      "primary-container": "#4d8eff",
+                      "background": "#0b1326",
+                      "error": "#ffb4ab",
+                      "surface-container-low": "#131b2e",
+                      "tertiary": "#4ae176",
+                      "tertiary-fixed": "#6bff8f",
+                      "surface-container-lowest": "#060e20",
+                      "on-background": "#dae2fd",
+                      "tertiary-fixed-dim": "#4ae176",
+                      "error-container": "#93000a",
+                      "on-primary-container": "#00285d",
+                      "surface-tint": "#adc6ff",
+                      "outline-variant": "#424754",
+                      "on-surface-variant": "#c2c6d6",
+                      "on-error": "#690005"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "unit": "8px",
+                      "bottom-bar-height": "48px",
+                      "sidebar-width": "280px",
+                      "gutter": "24px",
+                      "margin-desktop": "40px",
+                      "margin-mobile": "16px",
+                      "container-max": "1440px"
+              },
+              "fontFamily": {
+                      "label-caps": ["Inter"],
+                      "display-lg-mobile": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "code-block": ["JetBrains Mono"],
+                      "title-sm": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "body-md": ["Inter"]
+              },
+              "fontSize": {
+                      "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                      "display-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                      "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                      "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                      "code-block": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                      "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                      "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                      "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+              }
+            }
+          }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background h-screen flex overflow-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar (from JSON) -->
+<aside class="fixed left-0 top-0 h-full w-[280px] bg-surface/90 dark:bg-surface/90 border-r border-white/10 backdrop-blur-xl flex flex-col py-unit-gutter z-50 hidden md:flex">
+<div class="px-gutter mb-8">
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">analytics</span>
+                DataMind AI
+            </h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Enterprise Analytics</p>
+</div>
+<nav class="flex-1 flex flex-col gap-1 px-4">
+<!-- Inactive -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 scale-102 hover:transition-transform font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">dataset</span>
+                Datasets
+            </a>
+<!-- Inactive -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 scale-102 hover:transition-transform font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">database</span>
+                Databases
+            </a>
+<!-- Inactive -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 scale-102 hover:transition-transform font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">history</span>
+                Chat History
+            </a>
+<!-- Inactive -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 scale-102 hover:transition-transform font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">star</span>
+                Favorites
+            </a>
+<!-- ACTIVE: Settings -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary border-l-4 border-primary bg-primary/5 transition-all duration-200 scale-102 hover:transition-transform font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings</span>
+                Settings
+            </a>
+</nav>
+<div class="px-4 mt-auto">
+<button class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200">
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-[18px]">person</span>
+</div>
+<div class="flex flex-col items-start">
+<span class="font-body-sm text-body-sm font-semibold">User Profile</span>
+</div>
+</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 ml-0 md:ml-sidebar-width flex flex-col h-full relative z-10 pb-bottom-bar-height">
+<!-- TopNavBar (from JSON) -->
+<header class="flex justify-between items-center h-16 px-margin-desktop w-full z-40 bg-surface/70 dark:bg-surface/70 border-b border-white/10 backdrop-blur-md docked full-width top-0 sticky">
+<div class="flex items-center gap-2">
+<!-- Mobile menu toggle placeholder -->
+<button class="md:hidden text-on-surface p-2 -ml-2 rounded-lg hover:bg-white/5">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="flex items-center gap-2 font-title-sm text-title-sm text-on-surface-variant">
+<span class="hover:text-primary transition-colors cursor-pointer">Workspace</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-primary font-bold border-b-2 border-primary pb-1">Settings</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors focus-within:ring-2 focus-within:ring-primary/50 rounded-full p-2">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors focus-within:ring-2 focus-within:ring-primary/50 rounded-full p-2">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+</header>
+<!-- Settings Canvas -->
+<div class="flex-1 overflow-y-auto w-full p-margin-mobile md:p-margin-desktop">
+<div class="max-w-[1000px] mx-auto space-y-gutter">
+<div>
+<h2 class="font-display-lg-mobile md:font-display-lg text-on-surface mb-2">Platform Settings</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Configure your analytics environment, model preferences, and visual defaults.</p>
+</div>
+<!-- Settings Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter mt-8">
+<!-- Left Column: AI & Performance (Spans 7 cols on desktop) -->
+<div class="md:col-span-7 space-y-gutter">
+<!-- AI Models Section -->
+<section class="bg-surface-container/60 border border-white/10 rounded-xl p-6 backdrop-blur-sm relative overflow-hidden group">
+<!-- Subtle decorative gradient -->
+<div class="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all duration-700 pointer-events-none"></div>
+<div class="flex items-center gap-3 mb-6 relative z-10">
+<span class="material-symbols-outlined text-primary text-[28px]" style="font-variation-settings: 'FILL' 1;">psychology</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">AI Model Configuration</h3>
+</div>
+<div class="space-y-5 relative z-10">
+<div class="flex flex-col gap-2">
+<label class="font-title-sm text-title-sm text-on-surface">Primary Orchestration Model</label>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-1">Select the model used for complex reasoning and pipeline generation.</p>
+<div class="relative">
+<select class="w-full bg-surface-container-high border border-white/10 text-on-surface rounded-lg px-4 py-3 appearance-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary font-body-md text-body-md cursor-pointer transition-colors hover:border-white/20">
+<option value="gpt4o">GPT-4 Omni (Default - Recommended)</option>
+<option value="qwen2">Qwen 2.5 72B Instruct</option>
+<option value="deepseek">DeepSeek Coder V2</option>
+<option value="claude3">Claude 3.5 Sonnet</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">keyboard_arrow_down</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-2 pt-2">
+<label class="font-title-sm text-title-sm text-on-surface">Secondary Analysis Model (Fast)</label>
+<div class="relative">
+<select class="w-full bg-surface-container-high border border-white/10 text-on-surface rounded-lg px-4 py-3 appearance-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary font-body-md text-body-md cursor-pointer transition-colors hover:border-white/20">
+<option value="gpt4omini">GPT-4o Mini</option>
+<option value="qwen2-7b">Qwen 2.5 7B</option>
+<option value="llama3-8b">Llama 3 8B</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">keyboard_arrow_down</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Performance Section -->
+<section class="bg-surface-container/60 border border-white/10 rounded-xl p-6 backdrop-blur-sm relative overflow-hidden group">
+<div class="flex items-center gap-3 mb-6 relative z-10">
+<span class="material-symbols-outlined text-tertiary text-[28px]" style="font-variation-settings: 'FILL' 1;">speed</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Performance & Execution</h3>
+</div>
+<div class="space-y-6 relative z-10">
+<!-- Toggle Item -->
+<div class="flex items-center justify-between">
+<div class="pr-4">
+<label class="font-title-sm text-title-sm text-on-surface block">Streaming Responses</label>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Display AI output token-by-token for faster perceived generation.</p>
+</div>
+<button aria-checked="true" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-primary transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background" role="switch">
+<span class="translate-x-5 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+</button>
+</div>
+<div class="w-full h-[1px] bg-white/5"></div>
+<!-- Toggle Item -->
+<div class="flex items-center justify-between">
+<div class="pr-4">
+<label class="font-title-sm text-title-sm text-on-surface block">Enable Client-side Caching</label>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Store recent query results locally to reduce latency on repeat analyses.</p>
+</div>
+<button aria-checked="false" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-surface-container-highest transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background" role="switch">
+<span class="translate-x-0 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-outline shadow ring-0 transition duration-200 ease-in-out"></span>
+</button>
+</div>
+<div class="w-full h-[1px] bg-white/5"></div>
+<div class="flex flex-col gap-2">
+<label class="font-title-sm text-title-sm text-on-surface">Max Tokens per Request</label>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-1">Limits the length of context sent and received.</p>
+<div class="relative w-1/2 min-w-[200px]">
+<select class="w-full bg-surface-container-high border border-white/10 text-on-surface rounded-lg px-4 py-3 appearance-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary font-body-md text-body-md cursor-pointer transition-colors hover:border-white/20">
+<option value="4096">4,096</option>
+<option selected="" value="8192">8,192 (Recommended)</option>
+<option value="16384">16,384</option>
+<option value="32768">32,768 (High Memory)</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">keyboard_arrow_down</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Appearance & Visualization (Spans 5 cols on desktop) -->
+<div class="md:col-span-5 space-y-gutter">
+<!-- Appearance Section -->
+<section class="bg-surface-container/60 border border-white/10 rounded-xl p-6 backdrop-blur-sm relative overflow-hidden">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-secondary text-[28px]" style="font-variation-settings: 'FILL' 1;">palette</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Appearance</h3>
+</div>
+<div class="space-y-6">
+<div class="flex flex-col gap-3">
+<label class="font-title-sm text-title-sm text-on-surface">Theme Preference</label>
+<div class="grid grid-cols-3 gap-2 bg-surface-container-high p-1 rounded-lg border border-white/5">
+<button class="flex flex-col items-center justify-center gap-1 py-2 rounded-md hover:bg-white/5 transition-colors text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-[20px]">light_mode</span>
+<span class="font-label-caps text-label-caps">Light</span>
+</button>
+<!-- Active Segment -->
+<button class="flex flex-col items-center justify-center gap-1 py-2 rounded-md bg-surface border border-white/10 shadow-sm text-primary transition-all">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">dark_mode</span>
+<span class="font-label-caps text-label-caps">Dark</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 py-2 rounded-md hover:bg-white/5 transition-colors text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-[20px]">desktop_windows</span>
+<span class="font-label-caps text-label-caps">System</span>
+</button>
+</div>
+</div>
+<div class="w-full h-[1px] bg-white/5"></div>
+<div class="flex items-center justify-between">
+<div class="pr-4">
+<label class="font-title-sm text-title-sm text-on-surface block">Compact Mode</label>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Reduce padding and font sizes for higher data density.</p>
+</div>
+<button aria-checked="false" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-surface-container-highest transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background" role="switch">
+<span class="translate-x-0 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-outline shadow ring-0 transition duration-200 ease-in-out"></span>
+</button>
+</div>
+</div>
+</section>
+<!-- Visualization Defaults Section -->
+<section class="bg-surface-container/60 border border-white/10 rounded-xl p-6 backdrop-blur-sm relative overflow-hidden">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-tertiary-fixed-dim text-[28px]" style="font-variation-settings: 'FILL' 1;">bar_chart</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Visualization Defaults</h3>
+</div>
+<div class="space-y-6">
+<div class="flex flex-col gap-2">
+<label class="font-title-sm text-title-sm text-on-surface">Default Chart Type</label>
+<div class="relative">
+<select class="w-full bg-surface-container-high border border-white/10 text-on-surface rounded-lg px-4 py-3 appearance-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary font-body-md text-body-md cursor-pointer transition-colors hover:border-white/20">
+<option value="auto">Auto-detect (AI Selected)</option>
+<option value="bar">Bar Chart</option>
+<option value="line">Line Chart</option>
+<option value="scatter">Scatter Plot</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">keyboard_arrow_down</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<label class="font-title-sm text-title-sm text-on-surface">Show Gridlines by Default</label>
+<button aria-checked="true" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-primary transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background" role="switch">
+<span class="translate-x-5 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+</button>
+</div>
+<div class="flex items-center justify-between">
+<label class="font-title-sm text-title-sm text-on-surface">Auto-scale Axes from Zero</label>
+<button aria-checked="false" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-surface-container-highest transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background" role="switch">
+<span class="translate-x-0 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-outline shadow ring-0 transition duration-200 ease-in-out"></span>
+</button>
+</div>
+</div>
+</section>
+<!-- Action Area -->
+<div class="flex justify-end pt-4 gap-4">
+<button class="px-6 py-2.5 rounded-lg font-title-sm text-title-sm text-on-surface bg-surface-container-high border border-white/10 hover:bg-white/5 hover:border-white/20 transition-all duration-200">
+                                Discard Changes
+                            </button>
+<button class="px-6 py-2.5 rounded-lg font-title-sm text-title-sm text-on-primary bg-primary hover:bg-primary-container hover:text-on-primary-container hover:scale-102 transition-all duration-200 shadow-[0_0_15px_rgba(173,198,255,0.2)]">
+                                Save Settings
+                            </button>
+</div>
+</div>
+</div>
+<!-- Spacer for scrolling past nav -->
+<div class="h-12 w-full"></div>
+</div>
+</div>
+</main>
+<!-- Persistent Status Bar (BottomNavBar JSON) -->
+<footer class="fixed bottom-0 left-0 w-full z-50 flex justify-start items-center px-margin-desktop gap-gutter bg-background dark:bg-background border-t border-white/10 h-[48px]">
+<div class="flex items-center gap-2 text-on-surface-variant font-label-caps text-label-caps cursor-default">
+<span class="material-symbols-outlined text-[16px]">timer</span>
+<span>Execution: 2.4s</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant font-label-caps text-label-caps cursor-default">
+<span class="material-symbols-outlined text-[16px]">psychology</span>
+<span>Model: GPT-4o</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant font-label-caps text-label-caps cursor-default">
+<span class="material-symbols-outlined text-[16px]">memory</span>
+<span>Memory: 1.2GB</span>
+</div>
+<!-- Active/Primary status on the rightmost or highlighted one based on JSON active logic -->
+<div class="flex items-center gap-2 text-tertiary font-label-caps text-label-caps cursor-default ml-auto md:ml-0">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span>Status: Ready</span>
+</div>
+</footer>
+</body></html>

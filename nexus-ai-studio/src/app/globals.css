@@ -1,0 +1,200 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #000d34;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #012060;
+  --color-on-primary-container: #748acf;
+  --color-inverse-primary: #b4c5ff;
+
+  --color-secondary: #00658c;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #2abcfe;
+  --color-on-secondary-container: #004966;
+
+  --color-tertiary: #06121c;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #1b2732;
+  --color-on-tertiary-container: #828e9c;
+
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  --color-background: #f9f9fa;
+  --color-on-background: #1a1c1d;
+
+  --color-surface: #f9f9fa;
+  --color-on-surface: #1a1c1d;
+  --color-surface-dim: #dadadb;
+  --color-surface-bright: #f9f9fa;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f3f3f4;
+  --color-surface-container: #eeeeef;
+  --color-surface-container-high: #e8e8e9;
+  --color-surface-container-highest: #e2e2e3;
+  --color-on-surface-variant: #444650;
+
+  --color-outline: #757681;
+  --color-outline-variant: #c5c6d2;
+
+  --color-deep-navy: #012060;
+  --color-vibrant-blue: #01B0F1;
+  --color-charcoal-black: #010A14;
+  --color-neutral-muted: #F4F4F5;
+
+  --font-sans: "Hanken Grotesk", var(--font-inter), sans-serif;
+  --font-mono: "JetBrains Mono", var(--font-jetbrains-mono), monospace;
+
+  /* Custom Stitch Design Fonts */
+  --font-display-lg: "Hanken Grotesk", sans-serif;
+  --font-body-md: "Hanken Grotesk", sans-serif;
+  --font-headline-sm: "Hanken Grotesk", sans-serif;
+  --font-headline-md: "Hanken Grotesk", sans-serif;
+  --font-body-sm: "Hanken Grotesk", sans-serif;
+  --font-label-caps: "Hanken Grotesk", sans-serif;
+  --font-body-lg: "Hanken Grotesk", sans-serif;
+  --font-code-block: "JetBrains Mono", monospace;
+
+  /* Custom Stitch Design Border Radii */
+  --radius-DEFAULT: 2px;
+  --radius-lg: 4px;
+  --radius-xl: 8px;
+  --radius-full: 12px;
+
+  /* Custom Stitch Spacing */
+  --spacing-gutter: 16px;
+  --spacing-stack-loose: 16px;
+  --spacing-sidebar-collapsed: 64px;
+  --spacing-container-max: 1440px;
+  --spacing-stack-default: 8px;
+  --spacing-sidebar-width: 260px;
+  --spacing-stack-compact: 4px;
+}
+
+/* Custom Stitch Typography Utilities */
+@utility text-display-lg {
+  font-size: 48px;
+  line-height: 56px;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+@utility text-body-md {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+@utility text-headline-sm {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+}
+@utility text-headline-md {
+  font-size: 24px;
+  line-height: 32px;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+@utility text-body-sm {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+}
+@utility text-label-caps {
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+@utility text-body-lg {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+@utility text-code-block {
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+:root {
+  --background: #f9f9fa;
+  --foreground: #1a1c1d;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Glassmorphism Styles */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.glass-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.4) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(1, 32, 96, 0.08);
+  box-shadow: 0 4px 20px -2px rgba(1, 32, 96, 0.04);
+}
+
+.hero-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60vw;
+  height: 60vh;
+  background: radial-gradient(circle, rgba(1, 176, 241, 0.08) 0%, rgba(249, 249, 250, 0) 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ai-pulse {
+  box-shadow: 0 0 0 0 rgba(42, 188, 254, 0.4);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(42, 188, 254, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(42, 188, 254, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(42, 188, 254, 0); }
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c5c6d2;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #757681;
+}
+
+/* Sidebar and footer offsets matching Stitch layout */
+@media (min-width: 768px) {
+  .main-content-offset {
+    margin-left: 260px !important;
+  }
+  .footer-offset {
+    left: 260px !important;
+    width: calc(100% - 260px) !important;
+  }
+}

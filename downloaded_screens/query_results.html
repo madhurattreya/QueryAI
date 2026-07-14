@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DataMind AI - Query Results</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#003915",
+                        "secondary-container": "#571bc1",
+                        "on-surface": "#dae2fd",
+                        "surface": "#0b1326",
+                        "inverse-surface": "#dae2fd",
+                        "surface-container-high": "#222a3d",
+                        "inverse-on-surface": "#283044",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "on-secondary-fixed": "#23005c",
+                        "surface-dim": "#0b1326",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#004395",
+                        "on-primary-fixed": "#001a42",
+                        "secondary": "#d0bcff",
+                        "on-secondary": "#3c0091",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-secondary-container": "#c4abff",
+                        "tertiary-container": "#00a74b",
+                        "surface-container-highest": "#2d3449",
+                        "outline": "#8c909f",
+                        "primary-fixed": "#d8e2ff",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "surface-container": "#171f33",
+                        "on-primary": "#002e6a",
+                        "on-tertiary-fixed-variant": "#005321",
+                        "primary": "#adc6ff",
+                        "surface-bright": "#31394d",
+                        "on-tertiary-container": "#003111",
+                        "on-tertiary-fixed": "#002109",
+                        "inverse-primary": "#005ac2",
+                        "secondary-fixed": "#e9ddff",
+                        "surface-variant": "#2d3449",
+                        "primary-container": "#4d8eff",
+                        "background": "#0b1326",
+                        "error": "#ffb4ab",
+                        "surface-container-low": "#131b2e",
+                        "tertiary": "#4ae176",
+                        "tertiary-fixed": "#6bff8f",
+                        "surface-container-lowest": "#060e20",
+                        "on-background": "#dae2fd",
+                        "tertiary-fixed-dim": "#4ae176",
+                        "error-container": "#93000a",
+                        "on-primary-container": "#00285d",
+                        "surface-tint": "#adc6ff",
+                        "outline-variant": "#424754",
+                        "on-surface-variant": "#c2c6d6",
+                        "on-error": "#690005"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "8px",
+                        "bottom-bar-height": "48px",
+                        "sidebar-width": "280px",
+                        "gutter": "24px",
+                        "margin-desktop": "40px",
+                        "margin-mobile": "16px",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "code-block": ["JetBrains Mono"],
+                        "title-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "code-block": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.8));
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-header {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .sql-keyword { color: #d0bcff; font-weight: 500; }
+        .sql-function { color: #adc6ff; }
+        .sql-string { color: #4ae176; }
+        
+        /* Custom Scrollbar for dark theme glassmorphism */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1); 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.2); 
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-hidden selection:bg-primary selection:text-on-primary">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-full py-unit-gutter fixed left-0 top-0 w-[280px] bg-surface/90 border-r border-white/10 backdrop-blur-xl z-50">
+<div class="px-gutter mb-8 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary font-bold">bar_chart</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">DataMind AI</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Enterprise Analytics</p>
+</div>
+</div>
+<div class="flex flex-col gap-1 px-4 mt-4 w-full">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary border-l-4 border-primary bg-primary/5 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dataset</span>
+<span class="font-title-sm text-title-sm">Datasets</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">database</span>
+<span class="font-title-sm text-title-sm">Databases</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-title-sm text-title-sm">Chat History</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">star</span>
+<span class="font-title-sm text-title-sm">Favorites</span>
+</a>
+</div>
+<div class="mt-auto px-4 w-full">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-title-sm text-title-sm">Settings</span>
+</a>
+<div class="mt-4 px-4 flex items-center gap-3 pt-4 border-t border-white/10">
+<img class="w-8 h-8 rounded-full object-cover border border-white/20" data-alt="A macro photography portrait of a professional woman with glasses, soft studio lighting on a dark background, dramatic shadows." src="https://lh3.googleusercontent.com/aida-public/AB6AXuARetIhJzzQCZfAYE1c68MEGOhqyysk5cnr_lq9GG7jMlHD7GVSguZVk2bhHwt_z5xsXobv9UMleopmcIMRgnalTmmDH_7EXOu8pnMcgyh25MCsS1WEBsgXlvbdJTtmga7cPXyUWy9DOVuWW_qNnMM7oONYKi-hm_A2e_KJg9apqJ2HgvCT75DamUbSP8_k-HA2fRiBuS5_YJ8NUSA8T4U2MpCH3nK76IDId3Z_PFl-haXkJ6TMZC6r"/>
+<div class="flex flex-col">
+<span class="font-title-sm text-title-sm text-on-surface">Dr. A. Chen</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Data Scientist</span>
+</div>
+</div>
+</div>
+</nav>
+<!-- BottomNavBar -->
+<div class="fixed bottom-0 left-0 w-full z-50 flex justify-start items-center px-margin-desktop gap-gutter h-[48px] bg-background border-t border-white/10">
+<div class="ml-[280px] w-full flex gap-8">
+<div class="text-tertiary flex items-center gap-2 cursor-default font-label-caps text-label-caps">
+<span class="material-symbols-outlined text-[16px]">timer</span>
+<span>Execution: 2.4s</span>
+</div>
+<div class="text-on-surface-variant flex items-center gap-2 cursor-default font-label-caps text-label-caps">
+<span class="material-symbols-outlined text-[16px]">psychology</span>
+<span>Model: GPT-4o</span>
+</div>
+<div class="text-on-surface-variant flex items-center gap-2 cursor-default font-label-caps text-label-caps">
+<span class="material-symbols-outlined text-[16px]">memory</span>
+<span>Memory: 1.2GB</span>
+</div>
+<div class="text-on-surface-variant flex items-center gap-2 cursor-default font-label-caps text-label-caps ml-auto">
+<span class="material-symbols-outlined text-[16px] text-tertiary">check_circle</span>
+<span>Status: Ready</span>
+</div>
+</div>
+</div>
+<!-- Main Content Wrapper -->
+<main class="md:ml-[280px] mb-[48px] flex flex-col h-screen overflow-hidden relative">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center h-16 px-margin-desktop w-full z-40 bg-surface/70 border-b border-white/10 backdrop-blur-md sticky top-0 focus-within:ring-2 focus-within:ring-primary/50">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 text-on-surface-variant font-title-sm text-title-sm">
+<span class="hover:text-primary transition-colors cursor-pointer">Breadcrumbs</span>
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+<span class="text-primary font-bold border-b-2 border-primary pb-1">Workspace</span>
+</div>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="hover:text-primary transition-colors p-2 rounded-full hover:bg-white/5">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="hover:text-primary transition-colors p-2 rounded-full hover:bg-white/5">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<div class="flex-1 overflow-auto p-margin-desktop pb-[64px] flex flex-col gap-8 relative z-10">
+<div class="flex justify-between items-end">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface tracking-tight mb-2">Customer Churn Analysis</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Analysis of Q3 churn metrics filtered by high-value accounts across NA and EMEA regions.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-2 text-on-surface font-title-sm text-title-sm">
+<span class="material-symbols-outlined text-[18px]">bookmark</span>
+                        Save Query
+                    </button>
+<button class="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 hover:scale-[1.02] transition-all duration-200 text-on-primary font-title-sm text-title-sm flex items-center gap-2 shadow-[0_0_15px_rgba(173,198,255,0.2)]">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+                        Re-run
+                    </button>
+</div>
+</div>
+<!-- SQL Query Card -->
+<div class="glass-panel rounded-xl flex flex-col overflow-hidden transition-all duration-300" id="sql-card">
+<div class="px-6 py-4 border-b border-white/10 flex justify-between items-center cursor-pointer hover:bg-white/5 transition-colors" onclick="document.getElementById('sql-content').classList.toggle('hidden'); document.getElementById('sql-chevron').classList.toggle('rotate-180');">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">code</span>
+<h3 class="font-title-sm text-title-sm font-semibold text-on-surface">Generated SQL Query</h3>
+<div class="flex items-center gap-2 ml-4 px-3 py-1 rounded-full bg-surface-container-high border border-white/10 font-label-caps text-label-caps text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">token</span>
+<span>Tokens: 342</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors p-1 rounded">
+<span class="material-symbols-outlined transition-transform duration-300" id="sql-chevron">expand_more</span>
+</button>
+</div>
+<div class="p-6 bg-[#0b1326]/50" id="sql-content">
+<pre class="font-code-block text-code-block text-on-surface-variant overflow-x-auto"><code><span class="sql-keyword">WITH</span> RankedCustomers <span class="sql-keyword">AS</span> (
+    <span class="sql-keyword">SELECT</span> 
+        customer_id,
+        company_name,
+        region,
+        arr_usd,
+        churn_probability_score,
+        <span class="sql-function">ROW_NUMBER</span>() <span class="sql-keyword">OVER</span>(<span class="sql-keyword">PARTITION BY</span> region <span class="sql-keyword">ORDER BY</span> churn_probability_score <span class="sql-keyword">DESC</span>) <span class="sql-keyword">as</span> risk_rank
+    <span class="sql-keyword">FROM</span> enterprise_data.customer_metrics_q3
+    <span class="sql-keyword">WHERE</span> arr_usd &gt; <span class="sql-string">100000</span>
+      <span class="sql-keyword">AND</span> region <span class="sql-keyword">IN</span> (<span class="sql-string">'NA'</span>, <span class="sql-string">'EMEA'</span>)
+      <span class="sql-keyword">AND</span> status = <span class="sql-string">'Active'</span>
+)
+<span class="sql-keyword">SELECT</span> 
+    customer_id,
+    company_name,
+    region,
+    <span class="sql-function">ROUND</span>(arr_usd / <span class="sql-string">1000</span>, <span class="sql-string">2</span>) <span class="sql-keyword">as</span> arr_k,
+    <span class="sql-function">ROUND</span>(churn_probability_score * <span class="sql-string">100</span>, <span class="sql-string">1</span>) <span class="sql-keyword">as</span> risk_pct,
+    last_login_days_ago
+<span class="sql-keyword">FROM</span> RankedCustomers c
+<span class="sql-keyword">LEFT JOIN</span> enterprise_data.usage_logs u <span class="sql-keyword">ON</span> c.customer_id = u.account_id
+<span class="sql-keyword">WHERE</span> risk_rank &lt;= <span class="sql-string">50</span>
+<span class="sql-keyword">ORDER BY</span> risk_pct <span class="sql-keyword">DESC</span>;</code></pre>
+</div>
+</div>
+<!-- Data Table Section -->
+<div class="glass-panel rounded-xl flex-1 flex flex-col overflow-hidden min-h-[400px]">
+<!-- Table Toolbar -->
+<div class="px-6 py-4 border-b border-white/10 flex justify-between items-center bg-surface-container-low/50">
+<div class="flex items-center gap-4">
+<h3 class="font-title-sm text-title-sm font-semibold text-on-surface">Query Results</h3>
+<span class="font-label-caps text-label-caps px-2 py-1 bg-surface-container-high rounded text-on-surface-variant">100 rows</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="bg-surface border border-white/10 rounded-lg pl-9 pr-4 py-1.5 text-body-sm font-body-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 w-64 transition-all bg-opacity-50" placeholder="Filter results..." type="text"/>
+</div>
+<div class="h-6 w-px bg-white/10 mx-1"></div>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1 font-title-sm text-title-sm px-2 py-1 rounded hover:bg-white/5">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                            CSV
+                        </button>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1 font-title-sm text-title-sm px-2 py-1 rounded hover:bg-white/5">
+<span class="material-symbols-outlined text-[18px]">table_chart</span>
+                            Excel
+                        </button>
+</div>
+</div>
+<!-- Table Container -->
+<div class="flex-1 overflow-auto relative">
+<table class="w-full text-left border-collapse">
+<thead class="sticky top-0 z-20">
+<tr class="glass-header font-title-sm text-title-sm text-on-surface shadow-sm shadow-black/20">
+<th class="py-3 px-6 font-semibold border-b border-white/10 whitespace-nowrap">Customer ID</th>
+<th class="py-3 px-6 font-semibold border-b border-white/10 whitespace-nowrap">Company Name</th>
+<th class="py-3 px-6 font-semibold border-b border-white/10 whitespace-nowrap">Region</th>
+<th class="py-3 px-6 font-semibold border-b border-white/10 whitespace-nowrap text-right">ARR ($K)</th>
+<th class="py-3 px-6 font-semibold border-b border-white/10 whitespace-nowrap text-right">Risk (%)</th>
+<th class="py-3 px-6 font-semibold border-b border-white/10 whitespace-nowrap text-right">Last Login (Days)</th>
+<th class="py-3 px-6 font-semibold border-b border-white/10 whitespace-nowrap w-16"></th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-surface-variant divide-y divide-white/5">
+<tr class="hover:bg-primary/5 transition-colors group cursor-pointer">
+<td class="py-3 px-6 font-code-block">CUST-8921</td>
+<td class="py-3 px-6 text-on-surface font-medium">Acme Corp Global</td>
+<td class="py-3 px-6">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">NA</span>
+</td>
+<td class="py-3 px-6 text-right font-code-block">450.00</td>
+<td class="py-3 px-6 text-right">
+<div class="flex items-center justify-end gap-2">
+<div class="w-16 h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-error rounded-full" style="width: 89%"></div>
+</div>
+<span class="font-code-block text-error">89.4</span>
+</div>
+</td>
+<td class="py-3 px-6 text-right font-code-block text-error">42</td>
+<td class="py-3 px-6 text-right">
+<button class="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded text-on-surface">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/5 transition-colors group cursor-pointer bg-white/[0.02]">
+<td class="py-3 px-6 font-code-block">CUST-4432</td>
+<td class="py-3 px-6 text-on-surface font-medium">Nexus Dynamics</td>
+<td class="py-3 px-6">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">EMEA</span>
+</td>
+<td class="py-3 px-6 text-right font-code-block">820.50</td>
+<td class="py-3 px-6 text-right">
+<div class="flex items-center justify-end gap-2">
+<div class="w-16 h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-error rounded-full" style="width: 82%"></div>
+</div>
+<span class="font-code-block text-error">82.1</span>
+</div>
+</td>
+<td class="py-3 px-6 text-right font-code-block">15</td>
+<td class="py-3 px-6 text-right">
+<button class="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded text-on-surface">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/5 transition-colors group cursor-pointer">
+<td class="py-3 px-6 font-code-block">CUST-1093</td>
+<td class="py-3 px-6 text-on-surface font-medium">Stark Industries</td>
+<td class="py-3 px-6">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">NA</span>
+</td>
+<td class="py-3 px-6 text-right font-code-block">1,250.00</td>
+<td class="py-3 px-6 text-right">
+<div class="flex items-center justify-end gap-2">
+<div class="w-16 h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-orange-400 rounded-full" style="width: 75%"></div>
+</div>
+<span class="font-code-block text-orange-400">75.0</span>
+</div>
+</td>
+<td class="py-3 px-6 text-right font-code-block">8</td>
+<td class="py-3 px-6 text-right">
+<button class="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded text-on-surface">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/5 transition-colors group cursor-pointer bg-white/[0.02]">
+<td class="py-3 px-6 font-code-block">CUST-5511</td>
+<td class="py-3 px-6 text-on-surface font-medium">Cyberdyne Systems</td>
+<td class="py-3 px-6">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">EMEA</span>
+</td>
+<td class="py-3 px-6 text-right font-code-block">315.75</td>
+<td class="py-3 px-6 text-right">
+<div class="flex items-center justify-end gap-2">
+<div class="w-16 h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-orange-400 rounded-full" style="width: 68%"></div>
+</div>
+<span class="font-code-block text-orange-400">68.5</span>
+</div>
+</td>
+<td class="py-3 px-6 text-right font-code-block">12</td>
+<td class="py-3 px-6 text-right">
+<button class="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded text-on-surface">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/5 transition-colors group cursor-pointer">
+<td class="py-3 px-6 font-code-block">CUST-2290</td>
+<td class="py-3 px-6 text-on-surface font-medium">Umbrella Corp</td>
+<td class="py-3 px-6">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">NA</span>
+</td>
+<td class="py-3 px-6 text-right font-code-block">940.20</td>
+<td class="py-3 px-6 text-right">
+<div class="flex items-center justify-end gap-2">
+<div class="w-16 h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-tertiary rounded-full" style="width: 45%"></div>
+</div>
+<span class="font-code-block text-tertiary">45.2</span>
+</div>
+</td>
+<td class="py-3 px-6 text-right font-code-block">2</td>
+<td class="py-3 px-6 text-right">
+<button class="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded text-on-surface">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination / Footer -->
+<div class="px-6 py-3 border-t border-white/10 bg-surface-container-low/50 flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Showing 1 to 5 of 100 entries</span>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[20px]">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded bg-primary/20 text-primary font-title-sm text-title-sm flex items-center justify-center">1</button>
+<button class="w-8 h-8 rounded text-on-surface-variant hover:bg-white/5 font-title-sm text-title-sm flex items-center justify-center transition-colors">2</button>
+<button class="w-8 h-8 rounded text-on-surface-variant hover:bg-white/5 font-title-sm text-title-sm flex items-center justify-center transition-colors">3</button>
+<span class="px-1 text-on-surface-variant">...</span>
+<button class="w-8 h-8 rounded text-on-surface-variant hover:bg-white/5 font-title-sm text-title-sm flex items-center justify-center transition-colors">20</button>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

@@ -1,0 +1,40 @@
+Timestamp,Question,Generated Query,Time Taken (sec),Rows Returned
+2026-07-10 16:52:49,Get the count of rows in employees,result = len(employees),23.69,1
+2026-07-10 16:53:28,Get the count of rows in employees,result = len(employees),0.04,1
+2026-07-10 16:54:36,Get the count of rows in employees,result = len(employees),8.00,1
+2026-07-10 17:17:42,How many Cotton Fabric in the textiledataset,SELECT COUNT(*) AS Cotton_Fabric_Count  FROM textiledataset  WHERE TextileType = 'Cotton Fabric';,23.96,1
+2026-07-10 17:19:10,What is the total sales amount for Cotton Fabric?,SELECT SUM(TotalAmount) AS TotalSalesAmountForCottonFabric   FROM textiledataset   WHERE TextileType = 'Cotton Fabric';,8.60,1
+2026-07-11 08:56:37,How many rows in customers_100?,result = len(customers_100),33.41,1
+2026-07-11 09:03:23,Show first 10 rows of dataset customers_100,result = customers_100.head(10),318.24,10
+2026-07-11 09:04:50,Show first 10 rows of dataset customers_100,result = customers_100.head(10),405.85,10
+2026-07-11 09:05:03,How many rows in customers_100?,result = len(customers_100),266.68,1
+2026-07-11 09:17:46,What tables are available in the database?,"result = ""customers_100, employees, new, query_history""",30.44,1
+2026-07-11 09:20:17,Show first 10 rows of dataset customers_100,result = customers_100.head(10),110.80,10
+2026-07-11 09:21:06,Show first 10 rows of dataset customers_100,result = customers_100.head(10),160.54,10
+2026-07-11 09:23:37,Show first 10 rows of dataset azurevirtualmachines_8_in,result = azurevirtualmachines_8_in.head(10),198.00,10
+2026-07-11 09:25:32,Show first 10 rows of dataset azurevirtualmachines_8_in,result = azurevirtualmachines_8_in.head(10),313.01,10
+2026-07-11 09:39:22,What tables are available in the database?,"result = ""customers_100, employees, new, query_history""",0.01,0
+2026-07-11 09:39:37,Show first 10 rows of dataset textiledataset,"SELECT TransactionID, CustomerName, TextileType, Category, Region, SalespersonName, OrderDate, Quantity, PricePerUnit, TotalAmount, PaymentMethod  FROM textiledataset  LIMIT 10;",56.88,0
+2026-07-11 09:40:11,Show first 10 rows of dataset student,"SELECT Student_Name, Gender, Age, Event_Date, distance   FROM student   LIMIT 10;",98.24,2
+2026-07-11 09:40:56,Show first 10 rows of dataset student,"SELECT Student_Name, Gender, Age, Event_Date, distance   FROM student   LIMIT 10;",143.41,2
+2026-07-11 09:42:01,Show sales summary data,"SELECT       TransactionID,       CustomerName,       TextileType,       Category,       Region,       SalespersonName,       OrderDate,       Quantity,       PricePerUnit,       TotalAmount,       PaymentMethod  FROM       textiledataset",142.33,0
+2026-07-11 09:42:14,What are the top 5 highest sales,"SELECT TransactionID, TotalAmount  FROM textiledataset  ORDER BY TotalAmount DESC  LIMIT 5;",19.01,0
+2026-07-13 10:47:59,Show sales summary data,"result = customers_100[['City', 'Country']].groupby(['City', 'Country']).size().reset_index(name='Sales Count')",40.90,100
+2026-07-13 11:01:46,How many customers are from Sweden?,result = customers_100[customers_100['Country'] == 'Sweden'].shape[0],33.32,1
+2026-07-13 11:03:44,How many customers are from Canada?,result = customers_100[customers_100['Country'] == 'Canada'].shape[0],15.03,1
+2026-07-13 11:04:32,Use list comprehension: result = [x for x in range(50000000)],result = [x for x in range(50000000)],21.56,0
+2026-07-13 11:05:24,Plot a bar chart of customers count by country,"result = px.bar(customers_100.groupby('Country').size(), x='Country', y='count', title='Customers Count by Country')  result = 'Chart saved to chart.png and chart.html'",17.47,0
+2026-07-13 11:06:03,"Group customers_100 by Country, count them, reset_index to columns Country and Count, and plot a bar chart with x=Country and y=Count. Save the figure to chart.png and chart.html.","import pandas as pd  import plotly.express as px    result = 'Chart saved to chart.png and chart.html' if (chart := px.bar(customers_100.groupby('Country').size().reset_index(name='Count'), x='Country', y='Count')).write_image('chart.png') & chart.write_html('chart.html') else ''",22.90,0
+2026-07-13 11:07:39,"Show employees where name is Amit UNION SELECT 1, name, salary, department FROM employees","SELECT id, name, salary, department   FROM employees   WHERE name = 'Amit'   UNION   SELECT 1 AS id, name, salary, department   FROM employees;",51.49,5
+2026-07-13 11:18:53,How many rows in customers_100?,result = len(customers_100),29.22,1
+2026-07-13 11:19:26,How many rows in customers_100?,result = len(customers_100),6.33,1
+2026-07-13 11:43:33,How many rows in employees?,result = len(employees),34.47,1
+2026-07-13 11:43:54,What is their average salary?,result = employees['Salary'].mean(),8.76,0
+2026-07-13 11:45:05,How many rows in employees?,SELECT COUNT(*) AS row_count  FROM employees;,7.74,1
+2026-07-13 11:45:24,What is their average salary?,SELECT AVG(salary) AS average_salary  FROM employees;,10.39,1
+2026-07-13 11:46:11,plot a chart of customers by country in customers_100,result = 'Plotly is required for charts.',26.70,1
+2026-07-13 11:48:17,plot a chart of customers by country in customers_100,result = 'Plotly is required for charts.',0.17,0
+2026-07-13 14:25:10,Show all employees.,result = employee_dataset_employees.copy(),70.69,10
+2026-07-13 14:26:17,Who has the highest salary?,result = employee_dataset_employees.loc[employee_dataset_employees['Salary'].idxmax()],16.32,9
+2026-07-13 14:26:48,Which city has the most employees?,result = employees['Department'].value_counts().idxmax(),5.54,0
+2026-07-13 14:27:12,Which city has the most employees?,result = employees['Department'].value_counts().idxmax(),0.03,0

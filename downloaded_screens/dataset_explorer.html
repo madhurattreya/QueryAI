@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dataset Explorer - DataMind AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#003915",
+                        "secondary-container": "#571bc1",
+                        "on-surface": "#dae2fd",
+                        "surface": "#0b1326",
+                        "inverse-surface": "#dae2fd",
+                        "surface-container-high": "#222a3d",
+                        "inverse-on-surface": "#283044",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "on-secondary-fixed": "#23005c",
+                        "surface-dim": "#0b1326",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#004395",
+                        "on-primary-fixed": "#001a42",
+                        "secondary": "#d0bcff",
+                        "on-secondary": "#3c0091",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-secondary-container": "#c4abff",
+                        "tertiary-container": "#00a74b",
+                        "surface-container-highest": "#2d3449",
+                        "outline": "#8c909f",
+                        "primary-fixed": "#d8e2ff",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "surface-container": "#171f33",
+                        "on-primary": "#002e6a",
+                        "on-tertiary-fixed-variant": "#005321",
+                        "primary": "#adc6ff",
+                        "surface-bright": "#31394d",
+                        "on-tertiary-container": "#003111",
+                        "on-tertiary-fixed": "#002109",
+                        "inverse-primary": "#005ac2",
+                        "secondary-fixed": "#e9ddff",
+                        "surface-variant": "#2d3449",
+                        "primary-container": "#4d8eff",
+                        "background": "#0b1326",
+                        "error": "#ffb4ab",
+                        "surface-container-low": "#131b2e",
+                        "tertiary": "#4ae176",
+                        "tertiary-fixed": "#6bff8f",
+                        "surface-container-lowest": "#060e20",
+                        "on-background": "#dae2fd",
+                        "tertiary-fixed-dim": "#4ae176",
+                        "error-container": "#93000a",
+                        "on-primary-container": "#00285d",
+                        "surface-tint": "#adc6ff",
+                        "outline-variant": "#424754",
+                        "on-surface-variant": "#c2c6d6",
+                        "on-error": "#690005"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "8px",
+                        "bottom-bar-height": "48px",
+                        "sidebar-width": "280px",
+                        "gutter": "24px",
+                        "margin-desktop": "40px",
+                        "margin-mobile": "16px",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "code-block": ["JetBrains Mono"],
+                        "title-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "code-block": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Glassmorphism utility classes */
+        .glass-panel {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .glass-modal {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 15px rgba(173, 198, 255, 0.05); /* Primary color glow */
+        }
+        .btn-glass {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .btn-glass:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Subtle background gradient */
+        body {
+            background: radial-gradient(circle at top right, #171f33 0%, #0b1326 100%);
+            background-attachment: fixed;
+        }
+
+        /* Material Icons setup */
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md h-screen w-full overflow-hidden flex selection:bg-primary/30 selection:text-primary">
+<!-- Desktop Side Navigation (Hidden on Mobile) -->
+<nav class="hidden md:flex flex-col h-full py-unit-gutter fixed left-0 top-0 h-full w-[280px] border-r border-white/10 backdrop-blur-xl bg-surface/90 z-50">
+<div class="px-gutter mb-8">
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">DataMind AI</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Enterprise Analytics</p>
+</div>
+<ul class="flex flex-col gap-2 px-unit">
+<!-- Active State -->
+<li>
+<a class="flex items-center gap-3 px-gutter py-3 rounded-r-full text-primary border-l-4 border-primary bg-primary/5 font-title-sm text-title-sm hover:bg-white/5 transition-all duration-200 scale-102 hover:transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dataset" data-weight="fill" style="font-variation-settings: 'FILL' 1;">dataset</span>
+<span>Datasets</span>
+</a>
+</li>
+<!-- Inactive States -->
+<li>
+<a class="flex items-center gap-3 px-gutter py-3 border-l-4 border-transparent text-on-surface-variant hover:text-on-surface font-title-sm text-title-sm hover:bg-white/5 transition-all duration-200 scale-102 hover:transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="database">database</span>
+<span>Databases</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-gutter py-3 border-l-4 border-transparent text-on-surface-variant hover:text-on-surface font-title-sm text-title-sm hover:bg-white/5 transition-all duration-200 scale-102 hover:transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span>Chat History</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-gutter py-3 border-l-4 border-transparent text-on-surface-variant hover:text-on-surface font-title-sm text-title-sm hover:bg-white/5 transition-all duration-200 scale-102 hover:transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="star">star</span>
+<span>Favorites</span>
+</a>
+</li>
+<li class="mt-auto">
+<a class="flex items-center gap-3 px-gutter py-3 border-l-4 border-transparent text-on-surface-variant hover:text-on-surface font-title-sm text-title-sm hover:bg-white/5 transition-all duration-200 scale-102 hover:transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</li>
+</ul>
+<div class="px-gutter mt-8 pt-4 border-t border-white/10 flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center border border-white/10 overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A macro photography shot of a sleek, abstract geometric sphere glowing with cool blue and neon purple lights, representing a digital avatar in a high-tech corporate environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBE6oOgk78CziWj1q1sgjt1X7HeUVAiIAutjWq8pFymFb5jw6hKvoFxuyvWIVLaUn1_01su3PrLmIt_zVmgahW-WfE7viBgjfvdJ0FNEh10tTqU5lpRxVDUSvTJNIpDu5jCmS8QQvVlL4ZbE694Tw9Uqn1SCrV16xGW5iv_3f5RLILyX1srcdax5T65dk3nS8pXCJ8J8Bm_bzwvLetOq-4m2G9KLqPfDetzPkskxdNOmPWtpMz3ODi3"/>
+</div>
+<div class="flex flex-col">
+<span class="font-title-sm text-title-sm">Admin User</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Pro Tier</span>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-full md:ml-[280px] pb-bottom-bar-height overflow-hidden">
+<!-- Top App Bar (Desktop: full nav cluster, Mobile: basic header) -->
+<header class="flex justify-between items-center h-16 px-margin-mobile md:px-margin-desktop w-full z-40 docked full-width top-0 sticky border-b border-white/10 backdrop-blur-md bg-surface/70">
+<!-- Mobile Brand (Hidden on Desktop) -->
+<div class="md:hidden">
+<h1 class="font-headline-md text-headline-md font-black text-on-surface">DataMind AI</h1>
+</div>
+<!-- Desktop Breadcrumbs/Navigation -->
+<nav class="hidden md:flex items-center gap-4">
+<a class="text-on-surface-variant hover:text-primary transition-colors font-title-sm text-title-sm" href="#">Workspace</a>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">chevron_right</span>
+<a class="text-primary font-bold border-b-2 border-primary pb-1 font-title-sm text-title-sm" href="#">Datasets</a>
+</nav>
+<div class="flex items-center gap-4">
+<!-- Search Input -->
+<div class="relative group focus-within:ring-2 focus-within:ring-primary/50 rounded-full transition-all">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="bg-surface-variant/50 border border-white/10 text-on-surface font-body-sm text-body-sm rounded-full pl-10 pr-4 py-2 focus:outline-none focus:border-primary/50 w-48 md:w-64 transition-all glass-panel" placeholder="Search datasets..." type="text"/>
+</div>
+<!-- Trailing Actions -->
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+</header>
+<!-- Scrollable Canvas -->
+<div class="flex-1 overflow-y-auto px-margin-mobile md:px-margin-desktop py-8">
+<!-- Page Header & Actions -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+<div>
+<h2 class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface mb-2">Dataset Explorer</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Manage and explore your connected data sources. Supported formats include CSV, Excel, and direct SQL connections.</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="btn-glass flex items-center gap-2 px-4 py-2 rounded-lg font-title-sm text-title-sm text-on-surface hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+                        Filter
+                    </button>
+<button class="bg-primary text-on-primary flex items-center gap-2 px-4 py-2 rounded-lg font-title-sm text-title-sm hover:scale-102 transition-transform duration-200">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                        New Dataset
+                    </button>
+</div>
+</div>
+<!-- Grid Layout (Bento-style variations) -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-max">
+<!-- Card 1: Highlighted/Large Dataset -->
+<article class="glass-panel rounded-xl p-6 flex flex-col group relative overflow-hidden xl:col-span-2">
+<!-- Subtle background decoration -->
+<div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all duration-500"></div>
+<div class="flex justify-between items-start mb-6 z-10">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[28px]">table_chart</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Global_Sales_Q3_Final.csv</h3>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-surface-container-high text-on-surface-variant border border-white/5">CSV</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Updated 2 hrs ago</span>
+</div>
+</div>
+</div>
+<!-- Card Actions -->
+<div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+<button class="p-2 rounded-md hover:bg-white/10 text-on-surface-variant hover:text-tertiary transition-colors" title="Favorite">
+<span class="material-symbols-outlined text-[20px]">star</span>
+</button>
+<button class="p-2 rounded-md hover:bg-white/10 text-on-surface-variant hover:text-on-surface transition-colors" title="Reload">
+<span class="material-symbols-outlined text-[20px]">refresh</span>
+</button>
+<button class="p-2 rounded-md hover:bg-error/10 text-on-surface-variant hover:text-error transition-colors" title="Delete">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</div>
+<!-- Data Metrics -->
+<div class="grid grid-cols-3 gap-4 mb-8 z-10">
+<div class="bg-surface/50 border border-white/5 rounded-lg p-3">
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-1">Rows</span>
+<span class="font-code-block text-code-block text-on-surface text-lg">1.4M</span>
+</div>
+<div class="bg-surface/50 border border-white/5 rounded-lg p-3">
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-1">Columns</span>
+<span class="font-code-block text-code-block text-on-surface text-lg">24</span>
+</div>
+<div class="bg-surface/50 border border-white/5 rounded-lg p-3">
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-1">Size</span>
+<span class="font-code-block text-code-block text-on-surface text-lg">184 MB</span>
+</div>
+</div>
+<div class="mt-auto z-10 flex justify-end">
+<button class="btn-glass px-4 py-2 rounded-lg font-title-sm text-title-sm text-primary flex items-center gap-2 hover:bg-primary/10 transition-colors w-full md:w-auto justify-center">
+                            Open in Workspace
+                            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</article>
+<!-- Card 2 -->
+<article class="glass-panel rounded-xl p-6 flex flex-col group relative overflow-hidden">
+<div class="flex justify-between items-start mb-6 z-10">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-tertiary/10 border border-tertiary/20 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[24px]">view_list</span>
+</div>
+<div>
+<h3 class="font-title-sm text-title-sm text-on-surface truncate w-40" title="Customer_Churn_Model_Input.xlsx">Customer_Churn...</h3>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-surface-container-high text-on-surface-variant border border-white/5">Excel</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1 opacity-0 md:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+<button class="p-1.5 rounded-md hover:bg-white/10 text-on-surface-variant hover:text-tertiary transition-colors" title="Favorite">
+<span class="material-symbols-outlined text-[18px]">star</span>
+</button>
+<button class="p-1.5 rounded-md hover:bg-white/10 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3 mb-6 z-10">
+<div>
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-0.5">Rows / Cols</span>
+<span class="font-code-block text-code-block text-on-surface">450K / 12</span>
+</div>
+<div>
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-0.5">Size</span>
+<span class="font-code-block text-code-block text-on-surface">42 MB</span>
+</div>
+</div>
+<div class="mt-auto z-10 flex items-center justify-between border-t border-white/5 pt-4">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Oct 24, 2023</span>
+<button class="text-primary hover:text-primary-container font-title-sm text-title-sm flex items-center gap-1 transition-colors">
+                            Open
+                        </button>
+</div>
+</article>
+<!-- Card 3 -->
+<article class="glass-panel rounded-xl p-6 flex flex-col group relative overflow-hidden">
+<div class="flex justify-between items-start mb-6 z-10">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-secondary/10 border border-secondary/20 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[24px]">database</span>
+</div>
+<div>
+<h3 class="font-title-sm text-title-sm text-on-surface truncate w-40" title="Prod_User_Events_Stream">Prod_User_Events</h3>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-surface-container-high text-on-surface-variant border border-white/5">SQL</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1 opacity-0 md:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+<button class="p-1.5 rounded-md hover:bg-white/10 text-tertiary transition-colors" title="Favorited">
+<span class="material-symbols-outlined icon-fill text-[18px]">star</span>
+</button>
+<button class="p-1.5 rounded-md hover:bg-white/10 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3 mb-6 z-10">
+<div>
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-0.5">Rows / Cols</span>
+<span class="font-code-block text-code-block text-on-surface">Live / 8</span>
+</div>
+<div>
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-0.5">Status</span>
+<span class="font-code-block text-code-block text-tertiary flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span> Syncing
+                            </span>
+</div>
+</div>
+<div class="mt-auto z-10 flex items-center justify-between border-t border-white/5 pt-4">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Live Connection</span>
+<button class="text-primary hover:text-primary-container font-title-sm text-title-sm flex items-center gap-1 transition-colors">
+                            Query
+                        </button>
+</div>
+</article>
+<!-- Card 4 -->
+<article class="glass-panel rounded-xl p-6 flex flex-col group relative overflow-hidden">
+<div class="flex justify-between items-start mb-6 z-10">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-variant border border-white/10 flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[24px]">description</span>
+</div>
+<div>
+<h3 class="font-title-sm text-title-sm text-on-surface truncate w-40" title="Q2_Marketing_Spend.csv">Q2_Marketing_Sp...</h3>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-surface-container-high text-on-surface-variant border border-white/5">CSV</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1 opacity-0 md:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+<button class="p-1.5 rounded-md hover:bg-white/10 text-on-surface-variant hover:text-tertiary transition-colors" title="Favorite">
+<span class="material-symbols-outlined text-[18px]">star</span>
+</button>
+<button class="p-1.5 rounded-md hover:bg-white/10 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3 mb-6 z-10">
+<div>
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-0.5">Rows / Cols</span>
+<span class="font-code-block text-code-block text-on-surface">12K / 45</span>
+</div>
+<div>
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-0.5">Size</span>
+<span class="font-code-block text-code-block text-on-surface">2.4 MB</span>
+</div>
+</div>
+<div class="mt-auto z-10 flex items-center justify-between border-t border-white/5 pt-4">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Sep 15, 2023</span>
+<button class="text-primary hover:text-primary-container font-title-sm text-title-sm flex items-center gap-1 transition-colors">
+                            Open
+                        </button>
+</div>
+</article>
+</div>
+</div>
+</main>
+<!-- Bottom Status Bar -->
+<footer class="fixed bottom-0 w-full h-[48px] border-t border-white/10 z-50 flex justify-start items-center px-margin-desktop gap-gutter bg-background dark:bg-background">
+<div class="text-tertiary font-label-caps text-label-caps flex items-center gap-2 cursor-default">
+<span class="material-symbols-outlined">timer</span>
+<span>Execution: 2.4s</span>
+</div>
+<div class="text-on-surface-variant font-label-caps text-label-caps flex items-center gap-2 cursor-default">
+<span class="material-symbols-outlined">psychology</span>
+<span>Model: GPT-4o</span>
+</div>
+<div class="text-on-surface-variant font-label-caps text-label-caps flex items-center gap-2 cursor-default">
+<span class="material-symbols-outlined">memory</span>
+<span>Memory: 1.2GB</span>
+</div>
+<div class="text-on-surface-variant font-label-caps text-label-caps flex items-center gap-2 cursor-default ml-auto">
+<span class="material-symbols-outlined text-tertiary">check_circle</span>
+<span>Status: Ready</span>
+</div>
+</footer>
+<!-- Mobile Bottom Navigation (Visible only on mobile, replaces sidebar) -->
+<nav class="md:hidden fixed bottom-[48px] w-full bg-surface/90 backdrop-blur-xl border-t border-white/10 flex justify-around items-center h-16 z-40 pb-safe">
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined icon-fill">dataset</span>
+<span class="text-[10px] font-medium">Datasets</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined">database</span>
+<span class="text-[10px] font-medium">Databases</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="text-[10px] font-medium">History</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-medium">Settings</span>
+</a>
+</nav>
+</body></html>

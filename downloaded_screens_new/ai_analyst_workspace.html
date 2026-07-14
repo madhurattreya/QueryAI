@@ -1,0 +1,370 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Main Dashboard - AI Workspace</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline": "#757681",
+                    "surface": "#f9f9fa",
+                    "charcoal-black": "#010A14",
+                    "primary-container": "#012060",
+                    "secondary-container": "#2abcfe",
+                    "on-secondary-fixed": "#001e2d",
+                    "on-secondary": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-fixed": "#dbe1ff",
+                    "surface-bright": "#f9f9fa",
+                    "surface-variant": "#e2e2e3",
+                    "inverse-surface": "#2f3132",
+                    "inverse-primary": "#b4c5ff",
+                    "tertiary-fixed-dim": "#bbc8d6",
+                    "surface-container-highest": "#e2e2e3",
+                    "on-tertiary-fixed-variant": "#3c4854",
+                    "on-secondary-container": "#004966",
+                    "on-tertiary-fixed": "#111d27",
+                    "deep-navy": "#012060",
+                    "secondary-fixed": "#c6e7ff",
+                    "on-error": "#ffffff",
+                    "secondary-fixed-dim": "#81cfff",
+                    "surface-container": "#eeeeef",
+                    "surface-dim": "#dadadb",
+                    "on-secondary-fixed-variant": "#004c6b",
+                    "surface-white": "#FFFFFF",
+                    "tertiary-fixed": "#d7e4f3",
+                    "error-container": "#ffdad6",
+                    "on-primary-container": "#748acf",
+                    "on-background": "#1a1c1d",
+                    "tertiary-container": "#1b2732",
+                    "primary": "#000d34",
+                    "on-tertiary-container": "#828e9c",
+                    "on-primary-fixed-variant": "#2d4383",
+                    "surface-tint": "#465b9d",
+                    "surface-container-low": "#f3f3f4",
+                    "background": "#f9f9fa",
+                    "vibrant-blue": "#01B0F1",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-fixed": "#00174b",
+                    "tertiary": "#06121c",
+                    "surface-container-high": "#e8e8e9",
+                    "outline-variant": "#c5c6d2",
+                    "error": "#ba1a1a",
+                    "on-surface": "#1a1c1d",
+                    "secondary": "#00658c",
+                    "on-surface-variant": "#444650",
+                    "on-error-container": "#93000a",
+                    "neutral-muted": "#F4F4F5",
+                    "on-primary": "#ffffff",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "inverse-on-surface": "#f0f1f2"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "4px",
+                    "gutter": "24px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "32px",
+                    "max-width": "1440px"
+            },
+            "fontFamily": {
+                    "label-sm": ["JetBrains Mono"],
+                    "headline-lg-mobile": ["Hanken Grotesk"],
+                    "body-lg": ["Inter"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "headline-md": ["Hanken Grotesk"],
+                    "display-lg": ["Hanken Grotesk"],
+                    "body-md": ["Inter"],
+                    "label-md": ["JetBrains Mono"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "500"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Scrollbar styling for high-density feel */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #c5c6d2; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #757681; }
+    </style>
+</head>
+<body class="bg-surface font-body-md text-body-md text-on-surface overflow-hidden w-screen h-screen">
+<!-- Shared Component: SideNavBar -->
+<nav class="fixed left-0 top-0 h-full flex flex-col z-40 w-[280px] bg-charcoal-black text-vibrant-blue flat no shadows border-r border-charcoal-black">
+<div class="px-6 py-6 mb-4 flex items-center gap-4">
+<div class="w-10 h-10 bg-vibrant-blue rounded flex items-center justify-center text-white font-bold font-headline-md text-headline-md">E</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-white leading-tight">QueryIQ</h1>
+<p class="font-body-sm text-body-sm text-surface-variant opacity-80">AI Data Engine</p>
+</div>
+</div>
+<div class="px-4 mb-6">
+<button class="w-full bg-vibrant-blue text-white rounded font-label-md text-label-md py-2.5 flex items-center justify-center gap-2 hover:bg-secondary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Analysis
+            </button>
+</div>
+<div class="flex-1 flex flex-col gap-1 px-2 font-body-md text-body-md">
+<!-- Active Tab: Home -->
+<a class="flex items-center gap-3 bg-primary-container text-vibrant-blue border-l-4 border-vibrant-blue px-4 py-3 scale-95 duration-150 rounded-r-lg" href="#">
+<span class="material-symbols-outlined">home</span>
+                Home
+            </a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-tertiary-container hover:text-white transition-all rounded-lg ml-1" href="#">
+<span class="material-symbols-outlined">database</span>
+                Datasets
+            </a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-tertiary-container hover:text-white transition-all rounded-lg ml-1" href="#">
+<span class="material-symbols-outlined">code</span>
+                SQL Editor
+            </a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-tertiary-container hover:text-white transition-all rounded-lg ml-1" href="#">
+<span class="material-symbols-outlined">history</span>
+                Chat History
+            </a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-tertiary-container hover:text-white transition-all rounded-lg ml-1" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+</div>
+<div class="mt-auto px-2 pb-6 flex flex-col gap-1 font-body-md text-body-md">
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-tertiary-container hover:text-white transition-all rounded-lg ml-1" href="#">
+<span class="material-symbols-outlined">help</span>
+                Documentation
+            </a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-tertiary-container hover:text-white transition-all rounded-lg ml-1" href="#">
+<span class="material-symbols-outlined">contact_support</span>
+                Support
+            </a>
+</div>
+</nav>
+<!-- Shared Component: TopNavBar -->
+<header class="fixed top-0 left-[280px] w-[calc(100%-280px)] h-16 z-30 flex justify-between items-center px-margin-desktop bg-surface shadow-sm text-primary">
+<div class="flex items-center gap-8 h-full">
+<h2 class="font-headline-md text-headline-md font-bold text-deep-navy hidden">QueryIQ</h2>
+<nav class="flex gap-6 h-full font-label-md text-label-md">
+<a class="h-full flex items-center text-vibrant-blue border-b-2 border-vibrant-blue pb-1 opacity-80" href="#">Workspace</a>
+<a class="h-full flex items-center text-on-surface-variant hover:text-vibrant-blue transition-colors" href="#">Datasets</a>
+<a class="h-full flex items-center text-on-surface-variant hover:text-vibrant-blue transition-colors" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-vibrant-blue transition-colors rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-vibrant-blue transition-colors rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant ml-2">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="Professional corporate headshot of a young female data analyst with glasses, neutral background, bright lighting, high quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuANXiEd2AkxPWBG8jeOWtOu2oUhtNuYrVhRNOHb-rVChY_o9rGHTI0nVgiHnCJ9tNz5AffqXTudDJFCyn8X8jqR31xrmOlN2Mv4IlnMKGMxTXb_oDu2GYiQKWR8QaaDR50D26nfmccZdL-UioiQBuTm3Tvc97OJ8in9c83QE4UmCLIl586NrhvMQEoDx3ZfXDbA0E8laPFUF3ZhNZDBC98DWhRLKSjgoAu_4ZXhcWbrPc05IsUp0cWW">
+</div>
+</div>
+</header>
+<!-- Main 3-Panel Workspace -->
+<main class="ml-[280px] mt-16 mb-8 h-[calc(100vh-6rem)] w-[calc(100vw-280px)] flex flex-row bg-background">
+<!-- Panel 1: Left Sidebar (Internal Tree View) -->
+<aside class="w-[260px] h-full flex flex-col border-r border-outline-variant bg-surface-container-lowest flex-shrink-0">
+<div class="px-4 py-3 border-b border-outline-variant bg-surface flex justify-between items-center">
+<h3 class="font-label-md text-label-md text-on-surface font-semibold uppercase tracking-wider text-xs">Data Explorer</h3>
+<button class="text-on-surface-variant hover:text-vibrant-blue"><span class="material-symbols-outlined text-[18px]">search</span></button>
+</div>
+<div class="flex-1 overflow-y-auto p-2 font-body-sm text-body-sm">
+<!-- Tree Item -->
+<div class="flex items-center gap-1 py-1.5 px-2 hover:bg-surface-container-low rounded cursor-pointer text-on-surface font-medium">
+<span class="material-symbols-outlined text-[16px] text-outline">expand_more</span>
+<span class="material-symbols-outlined text-[16px] text-secondary">folder</span>
+<span class="">Datasets</span>
+</div>
+<!-- Sub Items -->
+<div class="pl-6 flex flex-col gap-0.5">
+<div class="flex items-center gap-1.5 py-1 px-2 hover:bg-surface-container-low rounded cursor-pointer text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-outline">chevron_right</span>
+<span class="material-symbols-outlined text-[16px] text-vibrant-blue">table_chart</span>
+<span class="">user_transactions_q3</span>
+</div>
+<!-- Expanded Sub Item -->
+<div class="flex items-center gap-1.5 py-1 px-2 bg-primary-fixed text-on-primary-fixed rounded cursor-pointer font-medium">
+<span class="material-symbols-outlined text-[16px] text-vibrant-blue">expand_more</span>
+<span class="material-symbols-outlined text-[16px] text-vibrant-blue">table_chart</span>
+<span class="">sales_revenue_2023</span>
+</div>
+<!-- Columns -->
+<div class="pl-7 flex flex-col gap-0.5 py-1 font-label-sm text-label-sm text-on-surface-variant">
+<div class="flex items-center gap-2 py-0.5"><span class="material-symbols-outlined text-[14px] text-outline-variant">tag</span> id </div>
+<div class="flex items-center gap-2 py-0.5"><span class="material-symbols-outlined text-[14px] text-outline-variant">calendar_today</span> transaction_date</div>
+<div class="flex items-center gap-2 py-0.5"><span class="material-symbols-outlined text-[14px] text-outline-variant">attach_money</span> amount_usd</div>
+<div class="flex items-center gap-2 py-0.5"><span class="material-symbols-outlined text-[14px] text-outline-variant">category</span> category_code</div>
+</div>
+<div class="flex items-center gap-1.5 py-1 px-2 hover:bg-surface-container-low rounded cursor-pointer text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-outline">chevron_right</span>
+<span class="material-symbols-outlined text-[16px] text-vibrant-blue">table_chart</span>
+<span class="">product_inventory</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Panel 2: Center Workspace (Chat & Code) -->
+<section class="flex-1 h-full flex flex-col relative bg-surface-container-lowest min-w-[500px]">
+<!-- Chat History Area -->
+<div class="flex-1 overflow-y-auto p-gutter pb-32 flex flex-col gap-6">
+<!-- User Message -->
+<div class="flex gap-4 max-w-3xl ml-auto">
+<div class="bg-surface-container-low border border-outline-variant text-on-surface px-4 py-3 rounded-xl rounded-tr-none shadow-sm font-body-md text-body-md">
+                        Can you analyze the sales_revenue_2023 table and explain the unusual dip in Q2? Specifically, break it down by category_code.
+                    </div>
+<div class="w-8 h-8 rounded bg-secondary-container flex-shrink-0 flex items-center justify-center text-white font-bold text-sm">U</div>
+</div>
+<!-- AI Message -->
+<div class="flex gap-4 max-w-4xl">
+<div class="w-8 h-8 rounded bg-primary-container flex-shrink-0 flex items-center justify-center text-vibrant-blue">
+<span class="material-symbols-outlined text-[20px]">smart_toy</span>
+</div>
+<div class="flex flex-col gap-4 w-full">
+<div class="text-on-surface font-body-md text-body-md leading-relaxed">
+                            I've analyzed the <code class="font-label-sm bg-surface-container px-1 py-0.5 rounded text-deep-navy">sales_revenue_2023</code> dataset. The Q2 dip is primarily driven by a 42% drop in the 'Electronics' category (`CAT-04`) during the month of May. This correlates with the known supply chain disruption during that period.
+                            <br><br>
+                            Here is the SQL query used to aggregate this trend:
+                        </div>
+<!-- SQL Code Block -->
+<div class="bg-charcoal-black rounded-lg border border-[#1b2732] overflow-hidden shadow-sm">
+<div class="flex justify-between items-center px-4 py-2 bg-[#1b2732] border-b border-[#3c4854]">
+<span class="font-label-sm text-label-sm text-surface-variant">SQL</span>
+<button class="text-surface-variant hover:text-white flex items-center gap-1 font-label-sm text-label-sm transition-colors">
+<span class="material-symbols-outlined text-[16px]">content_copy</span> Copy
+                                </button>
+</div>
+<div class="p-4 overflow-x-auto">
+<pre class="font-label-md text-label-md leading-relaxed text-surface-variant"><code class="language-sql"><span class="text-secondary-fixed">SELECT</span> 
+    category_code,
+    <span class="text-secondary-fixed">DATE_TRUNC</span>(<span class="text-vibrant-blue">'month'</span>, transaction_date) <span class="text-secondary-fixed">AS</span> rev_month,
+    <span class="text-secondary-fixed">SUM</span>(amount_usd) <span class="text-secondary-fixed">AS</span> total_revenue
+<span class="text-secondary-fixed">FROM</span> 
+    sales_revenue_2023
+<span class="text-secondary-fixed">WHERE</span> 
+    transaction_date &gt;= <span class="text-vibrant-blue">'2023-04-01'</span> <span class="text-secondary-fixed">AND</span> transaction_date &lt;= <span class="text-vibrant-blue">'2023-06-30'</span>
+<span class="text-secondary-fixed">GROUP BY</span> 
+    1, 2
+<span class="text-secondary-fixed">ORDER BY</span> 
+    rev_month, total_revenue <span class="text-secondary-fixed">DESC</span>;</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Message Input Area -->
+<div class="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest to-transparent">
+<div class="max-w-4xl mx-auto bg-surface border border-outline-variant rounded-xl p-2 flex items-end gap-2 shadow-[0_4px_20px_-2px_rgba(1,32,96,0.08)] focus-within:border-vibrant-blue focus-within:ring-1 focus-within:ring-vibrant-blue transition-all">
+<button class="p-2 text-on-surface-variant hover:text-deep-navy transition-colors mb-0.5">
+<span class="material-symbols-outlined" style="font-variation-settings: 'wght' 300;">attach_file</span>
+</button>
+<textarea class="flex-1 bg-transparent border-none focus:ring-0 resize-none py-2.5 font-body-md text-body-md text-on-surface max-h-32 placeholder:text-outline" placeholder="Ask AI to analyze data, generate queries, or chart trends..." rows="1"></textarea>
+<button class="bg-deep-navy text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-label-md text-label-md font-medium hover:bg-primary transition-colors shadow-sm whitespace-nowrap mb-0.5">
+                        Ask AI
+                        <span class="material-symbols-outlined text-[18px]">send</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Panel 3: Right Panel (Dataset Overview) -->
+<aside class="w-[300px] h-full flex flex-col border-l border-outline-variant bg-surface-container-lowest flex-shrink-0">
+<div class="px-4 py-4 border-b border-outline-variant flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-md font-semibold text-deep-navy">Dataset Overview</h3>
+<span class="material-symbols-outlined text-outline text-[20px]">info</span>
+</div>
+<div class="p-4 flex flex-col gap-4 overflow-y-auto">
+<p class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container px-2 py-1 rounded w-fit border border-outline-variant">sales_revenue_2023</p>
+<!-- Metric Cards Grid -->
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-surface border border-outline-variant rounded-lg p-3 shadow-sm">
+<div class="font-label-sm text-label-sm text-on-surface-variant mb-1">Total Rows</div>
+<div class="font-headline-md text-headline-md text-deep-navy font-bold">1.2M</div>
+</div>
+<div class="bg-surface border border-outline-variant rounded-lg p-3 shadow-sm">
+<div class="font-label-sm text-label-sm text-on-surface-variant mb-1">Columns</div>
+<div class="font-headline-md text-headline-md text-deep-navy font-bold">45</div>
+</div>
+<div class="bg-surface border border-outline-variant rounded-lg p-3 shadow-sm col-span-2 flex justify-between items-center">
+<div>
+<div class="font-label-sm text-label-sm text-on-surface-variant mb-1">Missing Data</div>
+<div class="font-headline-md text-[20px] text-vibrant-blue font-bold">0.2%</div>
+</div>
+<div class="w-12 h-12 rounded-full border-4 border-surface-container-high border-t-vibrant-blue"></div>
+</div>
+</div>
+<div class="mt-4">
+<h4 class="font-label-md text-label-md font-semibold text-on-surface mb-3 uppercase tracking-wider text-xs">Quick Insights</h4>
+<div class="flex flex-col gap-2">
+<div class="bg-primary-fixed p-3 rounded-lg border border-primary-fixed-dim cursor-pointer hover:shadow-sm transition-shadow">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-vibrant-blue text-[18px] mt-0.5">trending_up</span>
+<div>
+<h5 class="font-label-sm text-label-sm font-semibold text-deep-navy mb-0.5">Peak Revenue</h5>
+<p class="font-body-sm text-body-sm text-on-primary-fixed-variant text-[13px] leading-tight">Q4 shows a 22% historical spike compared to avg.</p>
+</div>
+</div>
+</div>
+<div class="bg-surface p-3 rounded-lg border border-outline-variant cursor-pointer hover:shadow-sm transition-shadow">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-error text-[18px] mt-0.5">warning</span>
+<div>
+<h5 class="font-label-sm text-label-sm font-semibold text-on-surface mb-0.5">Anomaly Detected</h5>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-[13px] leading-tight">3 null values found in required field `transaction_date`.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</main>
+<!-- Shared Component: BottomNavBar (Status Bar role based on context) -->
+<footer class="fixed bottom-0 left-0 w-full z-50 flex justify-between items-center px-4 py-1 h-8 bg-surface-container-highest border-t border-outline-variant flat no shadows font-label-sm text-label-sm font-bold text-deep-navy text-on-surface">
+<div class="flex gap-6">
+<div class="text-vibrant-blue flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">psychology</span>
+                Model: GPT-4
+            </div>
+<div class="text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">memory</span>
+                Memory: 1.2GB
+            </div>
+</div>
+<div class="text-on-surface-variant flex items-center gap-2">
+            Status: Operational
+            <span class="material-symbols-outlined text-[16px] text-[#00658c]">check_circle</span>
+</div>
+</footer>
+
+
+</body></html>

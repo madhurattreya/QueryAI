@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>QueryIQ | AI Insights &amp; Reporting</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .ai-pulse {
+            box-shadow: 0 0 0 0 rgba(42, 188, 254, 0.4);
+            animation: pulse-ai 2s infinite;
+        }
+        @keyframes pulse-ai {
+            0% { box-shadow: 0 0 0 0 rgba(42, 188, 254, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(42, 188, 254, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(42, 188, 254, 0); }
+        }
+        .grid-bg {
+            background-image: radial-gradient(circle, #E2E8F0 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#06121c",
+                        "on-error-container": "#93000a",
+                        "surface-dim": "#dadadb",
+                        "inverse-primary": "#b4c5ff",
+                        "surface": "#f9f9fa",
+                        "on-background": "#1a1c1d",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#111d27",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "surface-secondary": "#F8FAFC",
+                        "error-container": "#ffdad6",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed": "#00174b",
+                        "surface-tint": "#465b9d",
+                        "tertiary-fixed": "#d7e4f3",
+                        "code-bg": "#010A14",
+                        "secondary-fixed": "#c6e7ff",
+                        "on-primary-fixed-variant": "#2d4383",
+                        "on-secondary-container": "#004966",
+                        "border-subtle": "#E2E8F0",
+                        "outline": "#757681",
+                        "primary-container": "#012060",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed": "#001e2d",
+                        "ai-glow": "rgba(1, 176, 241, 0.15)",
+                        "surface-container-high": "#e8e8e9",
+                        "surface-container": "#eeeeef",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-container-highest": "#e2e2e3",
+                        "inverse-surface": "#2f3132",
+                        "on-primary": "#ffffff",
+                        "primary": "#000d34",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#81cfff",
+                        "background": "#f9f9fa",
+                        "secondary": "#00658c",
+                        "tertiary-fixed-dim": "#bbc8d6",
+                        "outline-variant": "#c5c6d2",
+                        "on-tertiary-container": "#828e9c",
+                        "primary-fixed": "#dbe1ff",
+                        "surface-bright": "#f9f9fa",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f3f3f4",
+                        "on-surface": "#1a1c1d",
+                        "on-surface-variant": "#444650",
+                        "on-secondary-fixed-variant": "#004c6b",
+                        "on-primary-container": "#748acf",
+                        "surface-variant": "#e2e2e3",
+                        "on-tertiary-fixed-variant": "#3c4854",
+                        "tertiary-container": "#1b2732",
+                        "secondary-container": "#2abcfe",
+                        "surface-primary": "#FFFFFF"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "stack-loose": "16px",
+                        "sidebar-collapsed": "64px",
+                        "container-max": "1440px",
+                        "stack-default": "8px",
+                        "sidebar-width": "260px",
+                        "stack-compact": "4px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-sm": ["Hanken Grotesk"],
+                        "label-caps": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "code-block": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "code-block": ["13px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface font-body-md overflow-x-hidden">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full flex flex-col z-40 bg-tertiary border-r border-outline-variant w-[260px]">
+<div class="p-gutter flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-container flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined text-secondary-container" style="font-variation-settings: 'FILL' 1;">dataset</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-white leading-none">QueryIQ</h1>
+<p class="font-body-sm text-body-sm text-on-tertiary-container">AI Data Engine</p>
+</div>
+</div>
+<nav class="mt-8 flex-1 space-y-1">
+<a class="flex items-center gap-3 text-on-tertiary-container px-4 py-2 hover:bg-tertiary-container hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-body-md">Home</span>
+</a>
+<a class="flex items-center gap-3 text-on-tertiary-container px-4 py-2 hover:bg-tertiary-container hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">database</span>
+<span class="font-body-md">Datasets</span>
+</a>
+<a class="flex items-center gap-3 text-on-tertiary-container px-4 py-2 hover:bg-tertiary-container hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">code</span>
+<span class="font-body-md">SQL Explorer</span>
+</a>
+<a class="flex items-center gap-3 bg-primary-container text-secondary-container border-l-2 border-secondary-container px-4 py-2 active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">insights</span>
+<span class="font-body-md">Insights</span>
+</a>
+<a class="flex items-center gap-3 text-on-tertiary-container px-4 py-2 hover:bg-tertiary-container hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">monitoring</span>
+<span class="font-body-md">Visualizations</span>
+</a>
+<a class="flex items-center gap-3 text-on-tertiary-container px-4 py-2 hover:bg-tertiary-container hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-body-md">Chat History</span>
+</a>
+</nav>
+<div class="p-gutter mt-auto space-y-1">
+<button class="w-full bg-secondary-container text-primary font-bold py-3 rounded-lg mb-4 hover:opacity-90 transition-opacity">
+                New Analysis
+            </button>
+<a class="flex items-center gap-3 text-on-tertiary-container px-4 py-2 hover:bg-tertiary-container hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-body-md">Documentation</span>
+</a>
+<a class="flex items-center gap-3 text-on-tertiary-container px-4 py-2 hover:bg-tertiary-container hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">contact_support</span>
+<span class="font-body-md">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Stage -->
+<main class="ml-[260px] min-h-screen pb-16 grid-bg">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-gutter h-16 bg-surface dark:bg-tertiary border-b border-border-subtle sticky top-0 z-30">
+<div class="flex items-center gap-6">
+<div class="font-headline-md text-headline-md font-bold text-primary">Analytics Engine</div>
+<nav class="flex gap-6">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-secondary-container transition-colors" href="#">Workspace</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-secondary-container transition-colors" href="#">Datasets</a>
+<a class="font-label-md text-label-md text-secondary-container border-b-2 border-secondary-container pb-1" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">hub</span></button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">notifications</span></button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">settings</span></button>
+<div class="w-8 h-8 rounded-full bg-primary overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a corporate executive in a sharp navy suit, captured with high-end portrait lighting in a minimalist, modern office setting. The style is crisp and clean, utilizing a shallow depth of field to create a soft, blurred architectural background in shades of light gray and subtle blue." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2TC0IsU88XNqKd0B0kzdUdpD8g8R2p4azGFC6G7RyrBsI6siFIoxUrPjP0D8RE4SmcXkbglOIvuo3trNSILUO8pcwHDToq4L5nO49u733rkL7ZgiWYJdX1eyblHcsrSxoVUv5UiYkAp8r7fVHG8XfzkxxyxMLZ5uWz1Iqx1owvYM3nse7yqrU1wYMID22GZpSkB9JoBnD_X9bNI6WrrqeiTxHLk1jFyshi9LF5VCfCEc3qoX4XWGL"/>
+</div>
+</div>
+</header>
+<!-- Page Header & Action Bar -->
+<div class="px-8 pt-8 flex justify-between items-end">
+<div>
+<nav class="flex items-center gap-2 mb-2">
+<span class="font-label-caps text-label-caps text-on-tertiary-container">REPORTS</span>
+<span class="material-symbols-outlined text-[14px] text-on-tertiary-container">chevron_right</span>
+<span class="font-label-caps text-label-caps text-primary">Q4 PERFORMANCE INSIGHTS</span>
+</nav>
+<h2 class="font-headline-md text-headline-md text-primary font-extrabold tracking-tight">AI Executive Intelligence Dashboard</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1 max-w-2xl">Automated synthesis of market trends, operational efficiency, and predictive revenue models for the fiscal closing.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-[18px]">share</span>
+                    Share Insight
+                </button>
+<button class="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-lg font-label-md text-label-md font-bold shadow-lg shadow-primary/10 hover:bg-primary-container transition-all active:scale-95">
+<span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+                    Download PDF Report
+                </button>
+</div>
+</div>
+<!-- Bento Grid Dashboard -->
+<div class="p-8 grid grid-cols-12 gap-6">
+<!-- Executive Summary -->
+<section class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+<div class="bg-white border border-outline-variant rounded-lg p-6 shadow-sm relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-1 h-full bg-secondary-container"></div>
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase">Executive Summary</h3>
+<span class="material-symbols-outlined text-secondary-container ai-pulse rounded-full" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div class="space-y-4">
+<div class="p-4 bg-surface-container-low rounded border border-outline-variant/30">
+<p class="font-body-sm text-primary leading-relaxed">
+                                "The organization has achieved a <span class="font-bold text-secondary">14.2% increase</span> in operational throughput this quarter. AI synthesis indicates that the primary driver is the integration of predictive supply chain modeling, which reduced stock-outs by <span class="font-bold">22%</span>."
+                            </p>
+</div>
+<ul class="space-y-3">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary text-[18px]">check_circle</span>
+<span class="font-body-sm">Target revenue exceeded by $2.4M in APAC region.</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary text-[18px]">check_circle</span>
+<span class="font-body-sm">Churn rate stabilized at historical low of 1.4%.</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary text-[18px]">warning</span>
+<span class="font-body-sm">Infrastructure costs rising 5% faster than projection.</span>
+</li>
+</ul>
+</div>
+</div>
+<!-- Forecast Card -->
+<div class="bg-white border border-outline-variant rounded-lg p-6 shadow-sm overflow-hidden flex-1">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase">Predictive Forecast</h3>
+<div class="px-2 py-1 bg-secondary/10 rounded text-secondary font-label-caps text-[10px]">98.2% CONFIDENCE</div>
+</div>
+<!-- Line Chart Placeholder -->
+<div class="h-48 w-full relative flex items-end justify-between gap-1 mt-4">
+<div class="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20">
+<div class="border-t border-outline"></div>
+<div class="border-t border-outline"></div>
+<div class="border-t border-outline"></div>
+</div>
+<div class="w-2 bg-outline-variant h-[20%] rounded-t-sm"></div>
+<div class="w-2 bg-outline-variant h-[35%] rounded-t-sm"></div>
+<div class="w-2 bg-outline-variant h-[30%] rounded-t-sm"></div>
+<div class="w-2 bg-outline-variant h-[45%] rounded-t-sm"></div>
+<div class="w-2 bg-outline-variant h-[60%] rounded-t-sm"></div>
+<div class="w-2 bg-outline-variant h-[55%] rounded-t-sm"></div>
+<div class="w-2 bg-secondary h-[75%] rounded-t-sm relative">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 font-label-caps text-[9px] text-secondary">PROJECTED</div>
+</div>
+<div class="w-2 bg-secondary/60 h-[85%] rounded-t-sm"></div>
+<div class="w-2 bg-secondary/40 h-[95%] rounded-t-sm"></div>
+</div>
+<div class="mt-6">
+<div class="flex justify-between items-center text-on-surface-variant font-label-caps">
+<span>Q1</span>
+<span>Q2</span>
+<span>Q3</span>
+<span>Q4</span>
+</div>
+<p class="font-body-sm text-on-surface-variant mt-4 italic">
+                            Trend analysis suggests a "Strong Bull" outlook for Q1 2024, driven by recurring SaaS renewals.
+                        </p>
+</div>
+</div>
+</section>
+<!-- Key Findings & Data -->
+<section class="col-span-12 lg:col-span-8 flex flex-col gap-6">
+<!-- Main Insights Chart Area -->
+<div class="bg-white border border-outline-variant rounded-lg shadow-sm p-6 overflow-hidden">
+<div class="flex items-center justify-between mb-8">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-primary">Key Performance Findings</h3>
+<p class="font-body-sm text-on-surface-variant">Global performance metrics segmented by business unit</p>
+</div>
+<div class="flex gap-2 p-1 bg-surface-container rounded-lg">
+<button class="px-3 py-1 bg-white shadow-sm rounded-md font-label-md text-label-md text-primary">Volume</button>
+<button class="px-3 py-1 font-label-md text-label-md text-on-surface-variant hover:text-primary">Growth</button>
+<button class="px-3 py-1 font-label-md text-label-md text-on-surface-variant hover:text-primary">Risk</button>
+</div>
+</div>
+<!-- Bar Chart Visual -->
+<div class="grid grid-cols-5 gap-8 h-64 items-end px-4 border-b border-outline-variant pb-4">
+<div class="flex flex-col items-center gap-3 group">
+<div class="w-full bg-primary relative h-[60%] hover:brightness-125 transition-all">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 font-label-md font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">74%</div>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-center">North America</span>
+</div>
+<div class="flex flex-col items-center gap-3 group">
+<div class="w-full bg-primary/80 relative h-[85%] hover:brightness-125 transition-all">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 font-label-md font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">91%</div>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-center">EMEA</span>
+</div>
+<div class="flex flex-col items-center gap-3 group">
+<div class="w-full bg-secondary relative h-[95%] hover:brightness-125 transition-all">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 font-label-md font-bold text-secondary opacity-0 group-hover:opacity-100 transition-opacity">98%</div>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-center">APAC</span>
+</div>
+<div class="flex flex-col items-center gap-3 group">
+<div class="w-full bg-primary/60 relative h-[45%] hover:brightness-125 transition-all">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 font-label-md font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">52%</div>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-center">LATAM</span>
+</div>
+<div class="flex flex-col items-center gap-3 group">
+<div class="w-full bg-primary/40 relative h-[30%] hover:brightness-125 transition-all">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 font-label-md font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">38%</div>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-center">MENA</span>
+</div>
+</div>
+<div class="mt-6 flex justify-between items-start gap-12">
+<div class="flex-1">
+<h4 class="font-label-md text-label-md text-primary font-bold mb-2">Anomaly Detection</h4>
+<p class="font-body-sm text-on-surface-variant">Unusually high growth in APAC region detected. Attributed to localized marketing campaign 'Lunar Alpha' launching earlier than planned.</p>
+</div>
+<div class="flex gap-8">
+<div class="text-center">
+<div class="font-headline-sm text-secondary font-bold">+28%</div>
+<div class="font-label-caps text-label-caps text-on-tertiary-container">YoY Δ</div>
+</div>
+<div class="text-center">
+<div class="font-headline-sm text-primary font-bold">1.2ms</div>
+<div class="font-label-caps text-label-caps text-on-tertiary-container">LATENCY</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recommendations Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="bg-white border border-outline-variant rounded-lg p-5 shadow-sm">
+<div class="flex items-center gap-3 mb-3">
+<div class="p-2 bg-secondary/10 rounded">
+<span class="material-symbols-outlined text-secondary text-[20px]">lightbulb</span>
+</div>
+<h4 class="font-headline-sm text-[16px] text-primary">Strategic Reallocation</h4>
+</div>
+<p class="font-body-sm text-on-surface-variant mb-4">QueryIQ suggests shifting 15% of underutilized server capacity from LATAM to APAC to support the surge in demand.</p>
+<button class="w-full py-2 bg-surface-container hover:bg-surface-container-high rounded font-label-md text-label-md text-primary transition-all">Apply Recommendation</button>
+</div>
+<div class="bg-white border border-outline-variant rounded-lg p-5 shadow-sm">
+<div class="flex items-center gap-3 mb-3">
+<div class="p-2 bg-error-container/20 rounded">
+<span class="material-symbols-outlined text-error text-[20px]">shield</span>
+</div>
+<h4 class="font-headline-sm text-[16px] text-primary">Risk Mitigation</h4>
+</div>
+<p class="font-body-sm text-on-surface-variant mb-4">Detected potential data silos in EMEA. Automated bridge creation recommended to unify customer journey metrics.</p>
+<button class="w-full py-2 bg-surface-container hover:bg-surface-container-high rounded font-label-md text-label-md text-primary transition-all">Review Details</button>
+</div>
+</div>
+</section>
+<!-- Bottom Heatmap Section -->
+<section class="col-span-12">
+<div class="bg-white border border-outline-variant rounded-lg shadow-sm p-6">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant">Regional Engagement Heatmap</h3>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 bg-primary/20 rounded-sm"></div>
+<span class="font-label-caps text-[9px] text-on-tertiary-container">LOW</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 bg-secondary rounded-sm"></div>
+<span class="font-label-caps text-[9px] text-on-tertiary-container">PEAK</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-1">
+<!-- Heatmap Grid -->
+<script>
+                            document.write(Array(72).fill(0).map(() => {
+                                const opacity = Math.random() * 0.9 + 0.1;
+                                return `<div class="h-8 rounded-sm bg-secondary" style="opacity: ${opacity}"></div>`;
+                            }).join(''));
+                        </script>
+</div>
+<div class="mt-4 flex justify-between font-label-caps text-[10px] text-on-tertiary-container uppercase tracking-widest">
+<span>00:00</span>
+<span>04:00</span>
+<span>08:00</span>
+<span>12:00</span>
+<span>16:00</span>
+<span>20:00</span>
+<span>24:00</span>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- BottomNavBar (Status Bar) -->
+<footer class="fixed bottom-0 left-0 w-full z-50 flex justify-between items-center px-gutter py-1 h-8 bg-surface/80 backdrop-blur-md border-t border-outline-variant shadow-lg">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 text-secondary-container">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-caps text-label-caps">Ready</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">psychology</span>
+<span class="font-label-caps text-label-caps">DeepSeek V3</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">memory</span>
+<span class="font-label-caps text-label-caps">1.2GB / 85%</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">speed</span>
+<span class="font-label-caps text-label-caps">12ms</span>
+</div>
+</div>
+</footer>
+<script>
+        // Micro-interactions and data simulations
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('mousedown', () => btn.classList.add('scale-95'));
+            btn.addEventListener('mouseup', () => btn.classList.remove('scale-95'));
+            btn.addEventListener('mouseleave', () => btn.classList.remove('scale-95'));
+        });
+
+        // Hover effect for heatmap
+        const heatCells = document.querySelectorAll('.grid.grid-cols-12 > div');
+        heatCells.forEach(cell => {
+            cell.addEventListener('mouseenter', () => {
+                cell.style.outline = '2px solid #2abcfe';
+                cell.style.zIndex = '10';
+            });
+            cell.addEventListener('mouseleave', () => {
+                cell.style.outline = 'none';
+                cell.style.zIndex = '1';
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DataMind AI - Main Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#003915",
+                        "secondary-container": "#571bc1",
+                        "on-surface": "#dae2fd",
+                        "surface": "#0b1326",
+                        "inverse-surface": "#dae2fd",
+                        "surface-container-high": "#222a3d",
+                        "inverse-on-surface": "#283044",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "on-secondary-fixed": "#23005c",
+                        "surface-dim": "#0b1326",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#004395",
+                        "on-primary-fixed": "#001a42",
+                        "secondary": "#d0bcff",
+                        "on-secondary": "#3c0091",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-secondary-container": "#c4abff",
+                        "tertiary-container": "#00a74b",
+                        "surface-container-highest": "#2d3449",
+                        "outline": "#8c909f",
+                        "primary-fixed": "#d8e2ff",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "surface-container": "#171f33",
+                        "on-primary": "#002e6a",
+                        "on-tertiary-fixed-variant": "#005321",
+                        "primary": "#adc6ff",
+                        "surface-bright": "#31394d",
+                        "on-tertiary-container": "#003111",
+                        "on-tertiary-fixed": "#002109",
+                        "inverse-primary": "#005ac2",
+                        "secondary-fixed": "#e9ddff",
+                        "surface-variant": "#2d3449",
+                        "primary-container": "#4d8eff",
+                        "background": "#0b1326",
+                        "error": "#ffb4ab",
+                        "surface-container-low": "#131b2e",
+                        "tertiary": "#4ae176",
+                        "tertiary-fixed": "#6bff8f",
+                        "surface-container-lowest": "#060e20",
+                        "on-background": "#dae2fd",
+                        "tertiary-fixed-dim": "#4ae176",
+                        "error-container": "#93000a",
+                        "on-primary-container": "#00285d",
+                        "surface-tint": "#adc6ff",
+                        "outline-variant": "#424754",
+                        "on-surface-variant": "#c2c6d6",
+                        "on-error": "#690005"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "8px",
+                        "bottom-bar-height": "48px",
+                        "sidebar-width": "280px",
+                        "gutter": "24px",
+                        "margin-desktop": "40px",
+                        "margin-mobile": "16px",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "code-block": ["JetBrains Mono"],
+                        "title-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "code-block": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0F172A;
+            color: #dae2fd;
+        }
+        .glass-panel {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        .glass-header {
+            backdrop-filter: blur(20px);
+        }
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body class="bg-background font-body-md text-on-surface h-screen overflow-hidden flex flex-col">
+<!-- TopNavBar -->
+<header class="bg-surface/70 dark:bg-surface/70 docked full-width top-0 sticky border-b border-white/10 backdrop-blur-md flat no shadows flex justify-between items-center h-16 px-margin-desktop w-full z-40">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md font-black text-on-surface">DataMind AI</span>
+<nav class="hidden md:flex gap-6 ml-8">
+<a class="text-on-surface-variant hover:text-primary transition-colors font-title-sm text-title-sm" href="#">Breadcrumbs</a>
+<a class="text-primary font-bold border-b-2 border-primary pb-1 font-title-sm text-title-sm" href="#">Workspace</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<!-- Search placeholder to match "on_right" logic -->
+<div class="relative focus-within:ring-2 focus-within:ring-primary/50 rounded-full bg-white/5 border border-white/10 px-4 py-1.5 flex items-center">
+<span class="material-symbols-outlined text-on-surface-variant text-sm mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm text-on-surface placeholder-on-surface-variant/50 w-48" placeholder="Search..." type="text"/>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-white/5">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-white/5">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<img class="w-8 h-8 rounded-full border border-white/20 object-cover ml-2" data-alt="A small, professional avatar of a data scientist with short hair, wearing glasses, in a dimly lit high-tech environment with soft blue screen reflections on their face." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBScKGbxvJFLVhT2II9gbOgexyB0EKV3LD7p6hxgj5DU1YyG-Zr1pcXlSYzF8UQKhpS5MmfqaAOdfnvVvZeFv88AHE2mYz_lzoK82CmEkWNXnXBR0dcCPafGFGpw9bHmomCvM5qpeHbH9nRC5h3-HcrJMTN9d3IEcMmTC7weLGc1RBpNFoA2C6RAZF6lklqCa-6F4zawRC6yIsN-n4m23QYKCuIfKPFN1CtOUhvUHHj0mIHcpnLdULN"/>
+</div>
+</header>
+<!-- Main Layout Content -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Left Sidebar (SideNavBar conceptually adapted for metadata) -->
+<aside class="w-[280px] bg-surface/90 dark:bg-surface/90 border-r border-white/10 backdrop-blur-xl flex flex-col h-full py-unit-gutter overflow-y-auto">
+<div class="px-6 py-4 border-b border-white/5 mb-4">
+<h2 class="font-title-sm text-title-sm text-on-surface font-semibold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">dataset</span>
+                    Active Dataset
+                </h2>
+<p class="text-on-surface-variant font-body-sm text-body-sm mt-1">customer_churn_2024.csv</p>
+</div>
+<div class="px-4">
+<div class="mb-6">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant mb-2 px-2">Tables</h3>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 px-2 py-2 rounded-md text-primary border-l-4 border-primary bg-primary/5 font-body-sm text-body-sm transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-[18px]">table_chart</span>
+                                users_main
+                            </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-2 py-2 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 font-body-sm text-body-sm border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined text-[18px]">table_view</span>
+                                subscription_logs
+                            </a>
+</li>
+</ul>
+</div>
+<div>
+<h3 class="font-label-caps text-label-caps text-on-surface-variant mb-2 px-2">Columns (users_main)</h3>
+<div class="space-y-1">
+<!-- Column items -->
+<div class="flex items-center justify-between px-2 py-1.5 hover:bg-white/5 rounded group cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">pin</span>
+<span class="font-body-sm text-body-sm text-on-surface">user_id</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant/70">INT</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1.5 hover:bg-white/5 rounded group cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">calendar_today</span>
+<span class="font-body-sm text-body-sm text-on-surface">signup_date</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant/70">DATE</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1.5 hover:bg-white/5 rounded group cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[16px]">abc</span>
+<span class="font-body-sm text-body-sm text-on-surface">plan_tier</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant/70">STR</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1.5 hover:bg-white/5 rounded group cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[16px]">123</span>
+<span class="font-body-sm text-body-sm text-on-surface">mrr</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant/70">FLOAT</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1.5 hover:bg-white/5 rounded group cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">toggle_on</span>
+<span class="font-body-sm text-body-sm text-on-surface">is_active</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant/70">BOOL</span>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Center Panel: AI Chat Interface -->
+<main class="flex-1 flex flex-col min-w-0 bg-background relative px-gutter py-gutter gap-6">
+<!-- Chat History Area -->
+<div class="flex-1 overflow-y-auto pr-2 space-y-6 pb-24">
+<!-- User Prompt -->
+<div class="flex justify-end">
+<div class="glass-panel rounded-xl rounded-tr-none px-6 py-4 max-w-[80%]">
+<p class="font-body-md text-body-md text-on-surface">Can you show me the SQL query to find the churn rate by plan tier for the last 6 months?</p>
+</div>
+</div>
+<!-- AI Response -->
+<div class="flex justify-start">
+<div class="glass-panel rounded-xl rounded-tl-none px-6 py-4 max-w-[90%] border-l-2 border-l-primary/50 relative">
+<div class="flex items-center gap-2 mb-3">
+<div class="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-primary">smart_toy</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant">DataMind AI</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface mb-4">Here is the SQL query to calculate the churn rate grouped by plan tier over the last 6 months. It assumes a user is considered churned if `is_active` is false.</p>
+<!-- Code Block -->
+<div class="rounded-lg bg-surface-container-lowest border border-white/5 overflow-hidden my-4">
+<div class="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+<span class="font-label-caps text-label-caps text-on-surface-variant">SQL</span>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+<pre class="p-4 overflow-x-auto"><code class="font-code-block text-code-block text-primary-fixed-dim">WITH monthly_status AS (
+    SELECT 
+        plan_tier,
+        COUNT(*) as total_users,
+        SUM(CASE WHEN is_active = false THEN 1 ELSE 0 END) as churned_users
+    FROM users_main
+    WHERE signup_date &gt;= CURRENT_DATE - INTERVAL '6 months'
+    GROUP BY plan_tier
+)
+SELECT 
+    plan_tier,
+    total_users,
+    churned_users,
+    ROUND((churned_users::numeric / total_users) * 100, 2) as churn_rate_pct
+FROM monthly_status
+ORDER BY churn_rate_pct DESC;</code></pre>
+</div>
+<p class="font-body-md text-body-md text-on-surface">Would you like me to execute this query and plot the results?</p>
+<div class="mt-4 flex gap-3">
+<button class="bg-[#3B82F6] hover:bg-blue-600 text-white font-title-sm text-body-sm px-4 py-2 rounded-lg transition-transform hover:scale-102 flex items-center gap-2 shadow-lg shadow-blue-500/20">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+                                Run Query
+                            </button>
+<button class="bg-white/5 border border-white/10 hover:bg-white/10 text-on-surface font-title-sm text-body-sm px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+                                Edit
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Input Area (Floating) -->
+<div class="absolute bottom-gutter left-gutter right-gutter">
+<div class="glass-panel rounded-xl p-2 flex items-end gap-2 border border-white/20 shadow-2xl">
+<button class="p-3 text-on-surface-variant hover:text-primary transition-colors rounded-lg hover:bg-white/5" title="Attach dataset or file">
+<span class="material-symbols-outlined">attach_file</span>
+</button>
+<div class="flex-1 bg-surface-container-lowest/50 rounded-lg border border-white/5 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/50 transition-all min-h-[56px] flex items-center px-4">
+<textarea class="w-full bg-transparent border-none focus:ring-0 text-on-surface resize-none font-body-md text-body-md py-3 max-h-32 placeholder-on-surface-variant/50" placeholder="Ask about your data, generate SQL, or request visualizations..." rows="1"></textarea>
+</div>
+<button class="p-3 bg-primary text-on-primary rounded-lg hover:bg-primary-container transition-transform hover:scale-105 flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Right Panel: Dataset Overview (Bento Grid Style) -->
+<aside class="w-[320px] bg-surface/50 border-l border-white/10 p-4 overflow-y-auto hidden lg:block">
+<h2 class="font-title-sm text-title-sm text-on-surface mb-4">Dataset Overview</h2>
+<div class="grid grid-cols-2 gap-3 mb-6">
+<!-- KPI Card 1 -->
+<div class="glass-panel p-4 rounded-xl flex flex-col justify-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1">Rows</span>
+<span class="font-headline-md text-headline-md text-on-surface">142.5K</span>
+</div>
+<!-- KPI Card 2 -->
+<div class="glass-panel p-4 rounded-xl flex flex-col justify-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1">Columns</span>
+<span class="font-headline-md text-headline-md text-on-surface">24</span>
+</div>
+<!-- KPI Card 3 -->
+<div class="glass-panel p-4 rounded-xl flex flex-col justify-center col-span-2 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-r from-error/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex justify-between items-center relative z-10">
+<div>
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-1">Missing Values</span>
+<span class="font-title-sm text-title-sm text-error">1.2% overall</span>
+</div>
+<span class="material-symbols-outlined text-error/50 text-[32px]">warning</span>
+</div>
+</div>
+</div>
+<h3 class="font-label-caps text-label-caps text-on-surface-variant mb-3">Quick Insights</h3>
+<div class="space-y-3">
+<!-- Insight Card -->
+<div class="glass-panel p-3 rounded-lg flex gap-3 items-start border-l-2 border-l-tertiary">
+<span class="material-symbols-outlined text-tertiary text-[20px] mt-0.5">trending_up</span>
+<div>
+<h4 class="font-body-sm text-body-sm text-on-surface font-semibold">Growth Spike</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-xs mt-1">Signups increased by 15% in the 'Enterprise' tier last month.</p>
+</div>
+</div>
+<!-- Insight Card -->
+<div class="glass-panel p-3 rounded-lg flex gap-3 items-start border-l-2 border-l-secondary">
+<span class="material-symbols-outlined text-secondary text-[20px] mt-0.5">data_usage</span>
+<div>
+<h4 class="font-body-sm text-body-sm text-on-surface font-semibold">High Correlation</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-xs mt-1">Strong link (0.84) between 'mrr' and 'session_duration'.</p>
+</div>
+</div>
+</div>
+<div class="mt-8">
+<!-- Visualization Placeholder -->
+<div class="h-40 rounded-xl bg-surface-container-low border border-white/5 relative overflow-hidden flex items-center justify-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant absolute z-10 top-2 left-2">Distribution</span>
+
+</div>
+</div>
+</aside>
+</div>
+<!-- BottomNavBar -->
+<footer class="bg-background dark:bg-background fixed bottom-0 w-full h-[48px] border-t border-white/10 flat no shadows fixed bottom-0 left-0 w-full z-50 flex justify-start items-center px-margin-desktop gap-gutter">
+<div class="text-on-surface-variant flex items-center gap-2 cursor-default font-label-caps text-label-caps">
+<span class="material-symbols-outlined text-[16px]">timer</span>
+<span>Execution: 2.4s</span>
+</div>
+<div class="text-on-surface-variant flex items-center gap-2 cursor-default font-label-caps text-label-caps">
+<span class="material-symbols-outlined text-[16px]">psychology</span>
+<span>Model: GPT-4o</span>
+</div>
+<div class="text-on-surface-variant flex items-center gap-2 cursor-default font-label-caps text-label-caps">
+<span class="material-symbols-outlined text-[16px]">memory</span>
+<span>Memory: 1.2GB</span>
+</div>
+<div class="text-tertiary flex items-center gap-2 cursor-default font-label-caps text-label-caps ml-auto">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+<span>Status: Ready</span>
+</div>
+</footer>
+</body></html>

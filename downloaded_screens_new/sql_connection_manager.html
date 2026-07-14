@@ -1,0 +1,453 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>SQL Connection Manager - EICE AI Analyst</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline": "#757681",
+                    "surface": "#f9f9fa",
+                    "charcoal-black": "#010A14",
+                    "primary-container": "#012060",
+                    "secondary-container": "#2abcfe",
+                    "on-secondary-fixed": "#001e2d",
+                    "on-secondary": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-fixed": "#dbe1ff",
+                    "surface-bright": "#f9f9fa",
+                    "surface-variant": "#e2e2e3",
+                    "inverse-surface": "#2f3132",
+                    "inverse-primary": "#b4c5ff",
+                    "tertiary-fixed-dim": "#bbc8d6",
+                    "surface-container-highest": "#e2e2e3",
+                    "on-tertiary-fixed-variant": "#3c4854",
+                    "on-secondary-container": "#004966",
+                    "on-tertiary-fixed": "#111d27",
+                    "deep-navy": "#012060",
+                    "secondary-fixed": "#c6e7ff",
+                    "on-error": "#ffffff",
+                    "secondary-fixed-dim": "#81cfff",
+                    "surface-container": "#eeeeef",
+                    "surface-dim": "#dadadb",
+                    "on-secondary-fixed-variant": "#004c6b",
+                    "surface-white": "#FFFFFF",
+                    "tertiary-fixed": "#d7e4f3",
+                    "error-container": "#ffdad6",
+                    "on-primary-container": "#748acf",
+                    "on-background": "#1a1c1d",
+                    "tertiary-container": "#1b2732",
+                    "primary": "#000d34",
+                    "on-tertiary-container": "#828e9c",
+                    "on-primary-fixed-variant": "#2d4383",
+                    "surface-tint": "#465b9d",
+                    "surface-container-low": "#f3f3f4",
+                    "background": "#f9f9fa",
+                    "vibrant-blue": "#01B0F1",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-fixed": "#00174b",
+                    "tertiary": "#06121c",
+                    "surface-container-high": "#e8e8e9",
+                    "outline-variant": "#c5c6d2",
+                    "error": "#ba1a1a",
+                    "on-surface": "#1a1c1d",
+                    "secondary": "#00658c",
+                    "on-surface-variant": "#444650",
+                    "on-error-container": "#93000a",
+                    "neutral-muted": "#F4F4F5",
+                    "on-primary": "#ffffff",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "inverse-on-surface": "#f0f1f2"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "4px",
+                    "gutter": "24px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "32px",
+                    "max-width": "1440px"
+            },
+            "fontFamily": {
+                    "label-sm": [
+                            "JetBrains Mono", "monospace"
+                    ],
+                    "headline-lg-mobile": [
+                            "Hanken Grotesk", "sans-serif"
+                    ],
+                    "body-lg": [
+                            "Inter", "sans-serif"
+                    ],
+                    "headline-lg": [
+                            "Hanken Grotesk", "sans-serif"
+                    ],
+                    "headline-md": [
+                            "Hanken Grotesk", "sans-serif"
+                    ],
+                    "display-lg": [
+                            "Hanken Grotesk", "sans-serif"
+                    ],
+                    "body-md": [
+                            "Inter", "sans-serif"
+                    ],
+                    "label-md": [
+                            "JetBrains Mono", "monospace"
+                    ],
+                    "body-sm": [
+                            "Inter", "sans-serif"
+                    ]
+            },
+            "fontSize": {
+                    "label-sm": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.04em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-lg": [
+                            "18px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "display-lg": [
+                            "48px",
+                            {
+                                    "lineHeight": "56px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "label-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "letterSpacing": "0.02em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        .material-symbols-outlined {
+          font-family: 'Material Symbols Outlined';
+          font-weight: normal;
+          font-style: normal;
+          font-size: 24px;
+          line-height: 1;
+          letter-spacing: normal;
+          text-transform: none;
+          display: inline-block;
+          white-space: nowrap;
+          word-wrap: normal;
+          direction: ltr;
+          -webkit-font-feature-settings: 'liga';
+          -webkit-font-smoothing: antialiased;
+        }
+        .text-glow {
+            text-shadow: 0 0 10px rgba(1, 176, 241, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col md:flex-row overflow-hidden font-body-md">
+<!-- SideNavBar (Hidden on Mobile, Visible on Desktop) -->
+<aside class="hidden md:flex fixed left-0 top-0 h-full flex flex-col z-40 bg-charcoal-black w-[280px]">
+<div class="p-6">
+<div class="flex items-center gap-4 mb-8">
+<div class="w-10 h-10 rounded-lg bg-gradient-to-br from-vibrant-blue to-primary-container flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(1,176,241,0.3)]">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">analytics</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-white leading-tight">QueryIQ</h1>
+<p class="font-label-sm text-label-sm text-tertiary-fixed-dim">AI Data Engine</p>
+</div>
+</div>
+<button class="w-full flex items-center justify-center gap-2 bg-vibrant-blue text-white py-3 rounded-lg font-label-md text-label-md font-bold hover:bg-opacity-90 transition-all mb-8 shadow-[0_4px_14px_0_rgba(1,176,241,0.39)]">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Analysis
+            </button>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 rounded-lg hover:bg-tertiary-container hover:text-white transition-all group font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined group-hover:text-vibrant-blue transition-colors">home</span>
+                    Home
+                </a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 rounded-lg hover:bg-tertiary-container hover:text-white transition-all group font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined group-hover:text-vibrant-blue transition-colors">database</span>
+                    Datasets
+                </a>
+<!-- Setting Settings as active since this is Connection Manager which relates to settings/configuration -->
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 rounded-lg hover:bg-tertiary-container hover:text-white transition-all group font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined group-hover:text-vibrant-blue transition-colors">code</span>
+                    SQL Editor
+                </a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 rounded-lg hover:bg-tertiary-container hover:text-white transition-all group font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined group-hover:text-vibrant-blue transition-colors">history</span>
+                    Chat History
+                </a>
+<a class="flex items-center gap-3 bg-primary-container text-vibrant-blue border-l-4 border-vibrant-blue px-4 py-3 rounded-r-lg transition-all scale-95 duration-150 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings</span>
+                    Settings
+                </a>
+</nav>
+</div>
+<div class="mt-auto p-6 space-y-1">
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 rounded-lg hover:bg-tertiary-container hover:text-white transition-all group font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-vibrant-blue transition-colors">help</span>
+                Documentation
+            </a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 rounded-lg hover:bg-tertiary-container hover:text-white transition-all group font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-vibrant-blue transition-colors">contact_support</span>
+                Support
+            </a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col md:ml-[280px] h-screen overflow-hidden bg-background">
+<!-- TopNavBar (Full width on Web, visible on Desktop) -->
+<header class="hidden md:flex justify-between items-center w-full px-margin-desktop h-16 bg-surface shadow-sm z-30">
+<div class="flex items-center gap-6">
+<!-- Branding / Title -->
+<span class="font-headline-md text-headline-md font-bold text-deep-navy">QueryIQ</span>
+<!-- Navigation Links -->
+<nav class="flex gap-6">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-vibrant-blue transition-colors py-1" href="#">Workspace</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-vibrant-blue transition-colors py-1" href="#">Datasets</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-vibrant-blue transition-colors py-1" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<!-- Search Placeholder -->
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="pl-10 pr-4 py-1.5 rounded-full border border-outline-variant bg-surface-white focus:border-vibrant-blue focus:ring-1 focus:ring-vibrant-blue outline-none text-body-sm transition-all w-64 shadow-sm" placeholder="Search resources..." type="text">
+</div>
+<!-- Trailing Icons -->
+<button class="text-on-surface-variant hover:text-vibrant-blue transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-vibrant-blue transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<!-- Profile -->
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant ml-2">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="A professional headshot of a corporate data analyst in a bright modern office setting, smiling slightly. Clean corporate modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCCm2oyYc2nX87UiGlvXZ6jv1cvEwaLyWJhKLbfChvJp9j2t6TB0uuR9Gj4cGlasVWobBlzv1XVvvofud6bScHEWzBnZm1Px_k-3n9nG4UXvScS_WDHlDpVt5ALKsnoK_4j7I1MRGa9QGHlyNSTPKqw4GFByTm3HeA4-oUivWW_L-cjren5emHdVM8JCY0yF-Uygzh1s2EjwHQKGIKENOsIWFJgQ2C4mJuNaqpsC-yeYDhdxeKmRF9">
+</div>
+</div>
+</header>
+<!-- Page Content Scrollable Area -->
+<div class="flex-1 overflow-y-auto p-margin-mobile md:p-margin-desktop bg-neutral-muted">
+<div class="max-w-max-width mx-auto">
+<!-- Page Header & Actions -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+<div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-deep-navy">SQL Connection Manager</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Manage and monitor your saved database connections.</p>
+</div>
+<button class="flex items-center justify-center gap-2 bg-deep-navy text-white px-5 py-2.5 rounded-lg font-label-md text-label-md font-bold hover:bg-primary transition-all shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+                        Add New Connection
+                    </button>
+</div>
+<!-- Connection Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+<!-- Card 1: PostgreSQL -->
+<div class="bg-surface-white rounded-xl border border-outline-variant shadow-sm hover:shadow-[0_4px_20px_-2px_rgba(1,32,96,0.08)] transition-all flex flex-col h-full">
+<div class="p-5 border-b border-surface-variant flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined">storage</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-deep-navy text-[18px]">PostgreSQL - Production</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">prod-db-us-east-1</p>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-vibrant-blue transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<div class="p-5 flex-1 flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Host</span>
+<span class="font-label-sm text-label-sm text-on-surface bg-surface-container px-2 py-1 rounded font-mono">192.168.1.104:5432</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Status</span>
+<div class="flex items-center gap-1.5 bg-[#E6F4EA] text-[#137333] px-2.5 py-1 rounded-full border border-[#CEEAD6]">
+<span class="w-2 h-2 rounded-full bg-[#137333]"></span>
+<span class="font-label-sm text-label-sm font-bold uppercase tracking-wider text-[10px]">Connected</span>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Last Active</span>
+<span class="font-body-sm text-body-sm text-on-surface">Just now</span>
+</div>
+</div>
+<div class="p-5 pt-0 mt-auto">
+<button class="w-full flex items-center justify-center gap-2 border border-vibrant-blue text-vibrant-blue py-2 rounded-lg font-label-md text-label-md hover:bg-secondary-fixed hover:text-deep-navy transition-colors">
+<span class="material-symbols-outlined text-[18px]">refresh</span>
+                                Reconnect
+                            </button>
+</div>
+</div>
+<!-- Card 2: MySQL -->
+<div class="bg-surface-white rounded-xl border border-outline-variant shadow-sm hover:shadow-[0_4px_20px_-2px_rgba(1,32,96,0.08)] transition-all flex flex-col h-full">
+<div class="p-5 border-b border-surface-variant flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined">dns</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-deep-navy text-[18px]">MySQL - Analytics</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">analytics-warehouse</p>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-vibrant-blue transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<div class="p-5 flex-1 flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Host</span>
+<span class="font-label-sm text-label-sm text-on-surface bg-surface-container px-2 py-1 rounded font-mono">db.analytics.corp:3306</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Status</span>
+<div class="flex items-center gap-1.5 bg-error-container text-on-error-container px-2.5 py-1 rounded-full border border-[#F9B5B2]">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="font-label-sm text-label-sm font-bold uppercase tracking-wider text-[10px]">Offline</span>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Last Active</span>
+<span class="font-body-sm text-body-sm text-on-surface">2 hours ago</span>
+</div>
+</div>
+<div class="p-5 pt-0 mt-auto">
+<button class="w-full flex items-center justify-center gap-2 border border-vibrant-blue text-vibrant-blue py-2 rounded-lg font-label-md text-label-md hover:bg-secondary-fixed hover:text-deep-navy transition-colors">
+<span class="material-symbols-outlined text-[18px]">refresh</span>
+                                Reconnect
+                            </button>
+</div>
+</div>
+<!-- Card 3: SQLite -->
+<div class="bg-surface-white rounded-xl border border-outline-variant shadow-sm hover:shadow-[0_4px_20px_-2px_rgba(1,32,96,0.08)] transition-all flex flex-col h-full">
+<div class="p-5 border-b border-surface-variant flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">folder_open</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-deep-navy text-[18px]">SQLite - Local</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">dev-testing-env</p>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-vibrant-blue transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<div class="p-5 flex-1 flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Path</span>
+<span class="font-label-sm text-label-sm text-on-surface bg-surface-container px-2 py-1 rounded font-mono truncate max-w-[140px]" title="/var/lib/data/local.db">/var/lib/.../local.db</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Status</span>
+<div class="flex items-center gap-1.5 bg-[#E6F4EA] text-[#137333] px-2.5 py-1 rounded-full border border-[#CEEAD6]">
+<span class="w-2 h-2 rounded-full bg-[#137333]"></span>
+<span class="font-label-sm text-label-sm font-bold uppercase tracking-wider text-[10px]">Connected</span>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Last Active</span>
+<span class="font-body-sm text-body-sm text-on-surface">5 mins ago</span>
+</div>
+</div>
+<div class="p-5 pt-0 mt-auto">
+<button class="w-full flex items-center justify-center gap-2 border border-vibrant-blue text-vibrant-blue py-2 rounded-lg font-label-md text-label-md hover:bg-secondary-fixed hover:text-deep-navy transition-colors">
+<span class="material-symbols-outlined text-[18px]">refresh</span>
+                                Reconnect
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom spacing for mobile nav bar if present -->
+<div class="h-12 md:h-8"></div>
+</div>
+</main>
+<!-- BottomNavBar (Visible on Mobile, Hidden on Web - Semantic rule requires evaluation, this is a top-level management view, so it could be visible, but style guide says suppress FABs and Navs on Settings/Profile. I will include the system status bar as requested by JSON BottomNavBar) -->
+<div class="fixed bottom-0 left-0 w-full z-50 flex justify-between items-center px-4 py-1 h-8 bg-surface-container-highest border-t border-outline-variant font-label-sm text-label-sm md:flex hidden">
+<div class="font-label-sm text-label-sm font-bold text-deep-navy flex items-center gap-2">
+<span class="">System Status</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">psychology</span>
+                Model: GPT-4
+            </div>
+<div class="text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">memory</span>
+                Memory: 1.2GB
+            </div>
+<div class="text-vibrant-blue flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+                Status: Operational
+            </div>
+</div>
+</div>
+
+
+</body></html>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
+import CommandPalette from "./CommandPalette";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -152,6 +153,7 @@ export default function DashboardLayout({ children, fullScreen = false }: Dashbo
           </div>
         </footer>
       </div>
+      <CommandPalette />
     </div>
   );
 }

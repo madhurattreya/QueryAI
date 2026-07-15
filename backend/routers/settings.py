@@ -34,10 +34,14 @@ def update_settings(req: SettingsRequest):
     config.settings["explain_mode"] = req.explain_mode
     config.settings["debug_mode"] = req.debug_mode
     config.settings["fast_mode"] = req.fast_mode
+    config.settings["technical_mode"] = req.technical_mode
+    config.settings["explain_level"] = req.explain_level
     
     # Sync settings with formatter flags
     formatter.explain_mode = req.explain_mode
     formatter.fast_mode = req.fast_mode
     formatter.debug_mode = req.debug_mode
+    formatter.technical_mode = req.technical_mode
+    formatter.explain_level = req.explain_level
     
     return {"status": "success", "settings": config.settings}

@@ -15,6 +15,8 @@ if not explain_mode and not fast_mode and not debug_mode:
     explain_mode = config.settings.get("explain_mode", True)
     fast_mode = config.settings.get("fast_mode", False)
     debug_mode = config.settings.get("debug_mode", False)
+technical_mode = config.settings.get("technical_mode", False)
+explain_level = config.settings.get("explain_level", "Normal")
 
 def print_structured_output(question: str, code: str, result, explanation: str, elapsed_time: float, rows_count: int, model_name: str, prompt: str = None):
     """

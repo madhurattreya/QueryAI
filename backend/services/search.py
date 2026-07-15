@@ -14,7 +14,8 @@ class EnterpriseSearchService:
             "semantic_model": [],
             "dashboards": [],
             "reports": [],
-            "favorites": []
+            "favorites": [],
+            "chat_history": []
         }
 
         # 1. Search Datasets
@@ -36,6 +37,10 @@ class EnterpriseSearchService:
         # 5. Search Favorites / Bookmarks
         cursor.execute("SELECT id, username, query, title FROM favorites WHERE LOWER(title) LIKE ? OR LOWER(query) LIKE ?", (q_clean, q_clean))
         results["favorites"] = [dict(row) for row in cursor.fetchall()]
+
+        # 6. Search Chat History / Messages
+        cursor.execute("SELECT id, conversation_id, role, content FROM messages WHERE role='user' AND LOWER(content) LIKE ?", (q_clean,))
+        results["chat_history"] = [dict(row) for row in cursor.fetchall()]
 
         conn.close()
         return results

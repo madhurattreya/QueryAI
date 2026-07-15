@@ -122,6 +122,16 @@ def init_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+    add_col("semantic_model", "display_name", "TEXT")
+    add_col("semantic_model", "description", "TEXT")
+    add_col("semantic_model", "business_meaning", "TEXT")
+    add_col("semantic_model", "synonyms", "TEXT")
+    add_col("semantic_model", "units", "TEXT")
+    add_col("semantic_model", "aggregation", "TEXT")
+    add_col("semantic_model", "category", "TEXT")
+    add_col("semantic_model", "is_measure", "INTEGER DEFAULT 0")
+    add_col("semantic_model", "is_dimension", "INTEGER DEFAULT 0")
+    add_col("semantic_model", "hierarchy", "TEXT")
     
     # 7. Create dashboards table
     cursor.execute("""

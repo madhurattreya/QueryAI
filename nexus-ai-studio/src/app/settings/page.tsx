@@ -8,6 +8,7 @@ export default function SettingsPage() {
   const [explainMode, setExplainMode] = useState(true);
   const [debugMode, setDebugMode] = useState(false);
   const [fastMode, setFastMode] = useState(false);
+  const [technicalMode, setTechnicalMode] = useState(false);
   const [hasGeminiKey, setHasGeminiKey] = useState(false);
   
   const [saveStatus, setSaveStatus] = useState<{ type: "idle" | "success" | "error"; message: string }>({
@@ -28,6 +29,7 @@ export default function SettingsPage() {
             setExplainMode(data.settings.explain_mode);
             setDebugMode(data.settings.debug_mode);
             setFastMode(data.settings.fast_mode);
+            setTechnicalMode(data.settings.technical_mode || false);
           }
         }
       } catch (err) {
@@ -48,7 +50,8 @@ export default function SettingsPage() {
           model,
           explain_mode: explainMode,
           debug_mode: debugMode,
-          fast_mode: fastMode
+          fast_mode: fastMode,
+          technical_mode: technicalMode
         })
       });
       if (res.ok) {
@@ -159,6 +162,25 @@ export default function SettingsPage() {
                 </label>
                 <p className="text-[10px] text-on-surface-variant mt-1 leading-relaxed font-semibold">
                   Skip secondary suggestions, conversational summaries, and code rendering to optimize run speeds.
+                </p>
+              </div>
+            </div>
+
+            {/* Technical Mode */}
+            <div className="flex items-start gap-4">
+              <input
+                id="technicalMode"
+                type="checkbox"
+                checked={technicalMode}
+                onChange={(e) => setTechnicalMode(e.target.checked)}
+                className="w-4 h-4 rounded bg-surface-container border-outline-variant/30 text-vibrant-blue focus:ring-vibrant-blue focus:ring-offset-background cursor-pointer"
+              />
+              <div className="text-xs leading-none">
+                <label htmlFor="technicalMode" className="font-bold text-deep-navy cursor-pointer">
+                  Technical mode
+                </label>
+                <p className="text-[10px] text-on-surface-variant mt-1 leading-relaxed font-semibold">
+                  Show raw code, SQL scripts, execution details, and planner metrics in the conversation.
                 </p>
               </div>
             </div>

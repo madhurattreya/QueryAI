@@ -50,13 +50,46 @@ def rewrite_query(question: str) -> str:
 
 def get_semantic_layer(df_name: str, df: pd.DataFrame) -> dict:
     """
-    Loads Semantic Layer profile from cached profiler.
+    Loads Semantic Layer profile from cached profiler and merges custom SQLite semantic layer entries.
     """
     try:
         profile_str = profile_dataset(df_name, df)
         import json
         profile = json.loads(profile_str)
-        return profile.get("semantic_layer", {})
+        sem_layer = profile.get("semantic_layer", {})
+        
+        # Merge SQLite custom semantic model entries
+        try:
+            from backend.services.semantic_model import SemanticModelManager
+            import backend.services.history_db as db
+            
+            conn = db.get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM datasets WHERE name = ? LIMIT 1", (df_name,))
+            row = cursor.fetchone()
+            conn.close()
+            
+            if row:
+                dataset_id = row["id"]
+                custom_items = SemanticModelManager().get_model_items(dataset_id)
+                for item in custom_items:
+                    col_name = item["name"]
+                    # Map properties from SQLite record to the semantic entry
+                    sem_layer[col_name] = {
+                        "display_name": item.get("display_name") or item.get("name", col_name),
+                        "description": item.get("description") or item.get("definition", ""),
+                        "business_meaning": item.get("business_meaning") or "",
+                        "synonyms": [s.strip() for s in (item.get("synonyms") or "").split(",") if s.strip()] if isinstance(item.get("synonyms"), str) else (item.get("synonyms") or []),
+                        "units": item.get("units") or "units",
+                        "aggregation_type": item.get("aggregation") or "sum",
+                        "category": item.get("category") or ("Measure" if item.get("is_measure") == 1 else "Dimension"),
+                        "hierarchy": item.get("hierarchy") or "",
+                        "actual_column": col_name
+                    }
+        except Exception as e:
+            print(f"[SEMANTIC LAYER WARNING] Failed to merge database semantic model: {e}")
+            
+        return sem_layer
     except Exception:
         return {}
 
@@ -163,6 +196,24 @@ def merge_conversational_context(current_plan: dict, prev_plan: dict, question: 
         merged["offset"] = 2
         merged["limit"] = 1
         merged["intent"] = "aggregation" if prev_plan.get("groupby") else "filter"
+
+    # 1.5. Same for [Year] / Year replacement (e.g. "same for 2024", "in 2024", "for 2024")
+    year_match = re.search(r"\b(?:same\s+for|in|for)\s+(\d{4})\b", q_lower)
+    if year_match:
+        year_val = int(year_match.group(1))
+        # Find any date column in df
+        date_cols = [col for col in df.columns if "date" in col.lower() or "joined" in col.lower() or "hired" in col.lower() or "year" in col.lower()]
+        if date_cols:
+            date_col = date_cols[0]
+            new_filter = {"column": date_col, "operator": "==", "value": year_val, "logical_relation": "and"}
+            # Remove previous filters on this date column to avoid conflicts
+            merged["filters"] = [f for f in merged.get("filters", []) if f["column"] != date_col] + [new_filter]
+
+    # 1.6. Compare with previous year / YoY comparison
+    if "previous year" in q_lower or "prior year" in q_lower or "yoy" in q_lower or "prev year" in q_lower:
+        merged["intent"] = "analytics_lib"
+        # Force YoY keyword in execution plan question
+        merged["question"] = question + " yoy"
         
     # 2. Exclude filter (e.g. "excluding Delhi", "exclude furniture")
     exclude_match = re.search(r"\b(?:exclude|excluding|except)\s+([a-z0-9_\-\s]+)", q_lower)
@@ -270,6 +321,12 @@ def merge_conversational_context(current_plan: dict, prev_plan: dict, question: 
         merged["limit"] = (merged.get("limit") or 10) * 2
     elif "collapse" in q_lower:
         merged["limit"] = max(1, int((merged.get("limit") or 10) / 2))
+
+    # 9.5. Show details / Raw data (e.g. "show details", "details")
+    if "show details" in q_lower or "show detail" in q_lower or "raw data" in q_lower:
+        merged["groupby"] = []
+        merged["limit"] = 100
+        merged["intent"] = "lookup"
 
     # 10. Trend / Timeframe adjustments (e.g. "show monthly trend")
     if "trend" in q_lower or "monthly" in q_lower or "quarterly" in q_lower:

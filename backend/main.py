@@ -20,6 +20,8 @@ from backend.routers.forecasting import router as forecasting_router
 from backend.routers.security import router as security_router
 from backend.routers.collaboration import router as collaboration_router
 from backend.routers.search import router as search_router
+from backend.routers.health import router as health_router
+from backend.routers.export import router as export_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -77,6 +79,8 @@ app.include_router(forecasting_router)
 app.include_router(security_router)
 app.include_router(collaboration_router)
 app.include_router(search_router)
+app.include_router(health_router)
+app.include_router(export_router)
 
 @app.get("/")
 def read_root():

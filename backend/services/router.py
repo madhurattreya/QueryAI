@@ -58,8 +58,14 @@ def classify_query_engine_detailed(question: str, prev_plan: dict = None, conver
     
     q_lower = question.lower()
     
+    # 0.5. Dashboard Generation
+    if ("create" in q_lower or "generate" in q_lower or "build" in q_lower or "make" in q_lower) and "dashboard" in q_lower:
+        engine_selected = "dashboard_gen"
+        cost = 1.0
+        llm_used = True
+        
     # 1. Metadata Engine
-    if parsed.intent == "metadata":
+    elif parsed.intent == "metadata":
         engine_selected = "metadata"
         cost = 0.1
     # 2. General Chat
@@ -85,7 +91,7 @@ def classify_query_engine_detailed(question: str, prev_plan: dict = None, conver
     # 7. SQL or LLM fallback
     else:
         # Check confidence
-        if parsed.confidence < 0.70:
+        if parsed.confidence < 0.60:
             llm_used = True
             cost = 2.0  # High cost of LLM invocation
             if "forecast" in q_lower or "predict" in q_lower:
@@ -96,7 +102,12 @@ def classify_query_engine_detailed(question: str, prev_plan: dict = None, conver
                 fallback_reason = "SQL database engine requires LLM translation."
             else:
                 engine_selected = "llm"
-                fallback_reason = f"Confidence score {parsed.confidence:.2f} is below threshold 0.70."
+                fallback_reason = f"Confidence score {parsed.confidence:.2f} is below hybrid threshold 0.60."
+        elif parsed.confidence < 0.85:
+            llm_used = False  # Runs deterministically through hybrid execution plan parser
+            engine_selected = "hybrid"
+            cost = 0.5
+            fallback_reason = f"Confidence score {parsed.confidence:.2f} is in hybrid range [0.60, 0.85)."
         else:
             engine_selected = "deterministic"
             cost = 0.2
@@ -121,3 +132,56 @@ def classify_query_engine_detailed(question: str, prev_plan: dict = None, conver
         "execution_cost": cost,
         "parsed_query": parsed
     }
+
+def select_relevant_sources(question: str, available_sources: list) -> list:
+    """
+    Prunes the schema to only include relevant source tables, preventing prompt bloat.
+    """
+    if len(available_sources) <= 1:
+        return available_sources
+
+    # Check for direct keyword matches first (fast path)
+    matched_sources = []
+    question_lower = question.lower()
+    for source in available_sources:
+        source_base = source.lower().rstrip('s')
+        if source.lower() in question_lower or (len(source_base) > 2 and source_base in question_lower):
+            matched_sources.append(source)
+            
+    if matched_sources:
+        return matched_sources
+
+    # Fallback to LLM selector
+    sources_str = ", ".join(available_sources)
+    prompt = f"""
+You are a database router.
+Your job is to read the user's question and select ONLY the relevant table/dataset names from the available list that are required to answer the question.
+
+Available datasets/tables:
+{sources_str}
+
+Rules:
+1. Return ONLY a comma-separated list of selected dataset/table names (e.g. "customers, orders").
+2. Do not include any explanations, introduction, markdown blocks, or other text.
+3. If you are unsure, list them all.
+4. Only select names that exist in the list above.
+
+Question:
+{question}
+"""
+    try:
+        model = config.settings.get("model", "qwen2.5:7b")
+        from backend.services.llm import LLMManager
+        manager = LLMManager()
+        content, _ = manager.call_llm_with_fallback(prompt, model)
+        content = content.strip()
+        content = re.sub(r'[^a-zA-Z0-9_,\s]', '', content)
+        selected = [name.strip() for name in content.split(",") if name.strip()]
+        valid_selected = [name for name in selected if name in available_sources]
+        
+        if not valid_selected:
+            return available_sources
+        return valid_selected
+    except Exception:
+        return available_sources
+

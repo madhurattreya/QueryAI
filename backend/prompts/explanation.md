@@ -17,17 +17,20 @@ Rules:
 ### Executive Summary
 [A concise 1-2 sentence high-level summary of the main business conclusion.]
 
-### Business Explanation
+### Business Meaning
 [A detailed non-technical narrative explanation of what the numbers mean, their context, and their business implications.]
 
-### Method Used
-[A simple explanation of the calculation method used: e.g. Summation, Simple Aggregation, Correlation Coefficient, Cohort Analysis, or Outlier Thresholding.]
+### Why This Happened
+[Explain the business causes, factors, or events that generated these specific numbers or trends.]
 
-### Confidence
-[The confidence level (High / Medium / Low) with a brief justification regarding data completeness and noise.]
+### Key Drivers
+[Identify the primary variables, metrics, categories, or factors driving this result.]
 
-### Suggested Actions
+### Potential Risks
+[Highlight any risks, data limitations, concerns, or negative trends that this result exposes.]
+
+### Recommendations
 [1-2 concrete, actionable business recommendations or steps to take based on the findings.]
 
-### Follow-up Questions
+### Suggested Next Questions
 [List 3 logical, interesting follow-up questions for the user to explore next based on this data.]

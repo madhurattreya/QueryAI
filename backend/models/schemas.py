@@ -14,6 +14,8 @@ class SettingsRequest(BaseModel):
     explain_mode: bool
     debug_mode: bool
     fast_mode: bool
+    technical_mode: bool = False
+    explain_level: str = "Normal"
 
 class QueryRequest(BaseModel):
     question: str

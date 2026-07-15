@@ -183,6 +183,173 @@ def background_tasks_worker(
         pass
 
 
+def generate_smart_suggestions(question: str, parsed_query) -> list:
+    """
+    Programmatically generates suggested follow-up questions from the execution plan/question.
+    """
+    suggestions = []
+    if not parsed_query:
+        return [
+            "Show distribution of values",
+            "What are the top categories?",
+            "Export this summary to CSV"
+        ]
+        
+    intent = getattr(parsed_query, "intent", "general")
+    filters = getattr(parsed_query, "filters", [])
+    aggregations = getattr(parsed_query, "aggregations", [])
+    groupby = getattr(parsed_query, "groupby", [])
+    
+    measure = aggregations[0]["column"] if aggregations else "result"
+    if groupby:
+        groupby_col = groupby[0]
+        suggestions.append(f"Show top 10 {groupby_col} by {measure}")
+        suggestions.append(f"Compare {measure} across all {groupby_col}")
+    
+    if any(k in question.lower() for k in ["sales", "revenue", "profit", "amount", "count"]):
+        suggestions.append(f"Compare {measure} with last year")
+        suggestions.append(f"Show monthly trend of {measure}")
+        suggestions.append(f"Show contribution percentage of {measure}")
+        
+    if any(k in question.lower() for k in ["city", "state", "region", "country"]):
+        suggestions.append(f"Show map of {measure} by location")
+        
+    if len(suggestions) < 3:
+        suggestions.extend([
+            "Show distribution of values",
+            "What are the top categories?",
+            "Export this summary to CSV"
+        ])
+        
+    return list(set(suggestions))[:4]
+
+
+def generate_local_explanation(question: str, result, parsed_query) -> str | None:
+    """
+    Local Rule Engine to generate simple business explanations without LLM latency.
+    """
+    import pandas as pd
+    val = None
+    
+    # 1. Check if scalar or simple shape
+    if isinstance(result, (int, float, str, bool)):
+        val = result
+    elif isinstance(result, pd.DataFrame):
+        if result.empty:
+            return (
+                "### Executive Summary\n"
+                "The analysis returned no matching records.\n\n"
+                "### Business Meaning\n"
+                "No data meets the current filter criteria.\n\n"
+                "### Why This Happened\n"
+                "This occurs when filter constraints are too narrow or there are no transactions matching the parameters.\n\n"
+                "### Key Drivers\n"
+                f"No records matched filters: {parsed_query.filters}.\n\n"
+                "### Potential Risks\n"
+                "Ensure that data ingestion is active and the selected filters match actual category values.\n\n"
+                "### Recommendations\n"
+                "Try relaxing some filters or broaden your query to verify overall data presence.\n\n"
+                "### Suggested Next Questions\n"
+                "1. Show all records without filters\n"
+                "2. Check total row count in dataset\n"
+                "3. Reset filters"
+            )
+        elif result.shape == (1, 1):
+            val = result.iloc[0, 0]
+        elif result.shape[0] == 1:
+            row_dict = result.iloc[0].to_dict()
+            desc = ", ".join([f"**{k}**: {v}" for k, v in row_dict.items() if pd.notnull(v)])
+            return (
+                f"### Executive Summary\n"
+                f"The analysis found 1 matching record.\n\n"
+                f"### Business Meaning\n"
+                f"Here is the detailed result:\n{desc}\n\n"
+                f"### Why This Happened\n"
+                f"A single record matched the requested parameters.\n\n"
+                f"### Key Drivers\n"
+                f"Specific criteria matched: {parsed_query.filters}.\n\n"
+                f"### Potential Risks\n"
+                f"Relying on a single entry might not be statistically representative of overall trends.\n\n"
+                f"### Recommendations\n"
+                f"Examine related records or check other entries in this category for a broader context.\n\n"
+                f"### Suggested Next Questions\n"
+                f"1. Show similar records\n"
+                f"2. Summarize overall category totals\n"
+                f"3. Clear filters and show all"
+            )
+    elif isinstance(result, pd.Series):
+        if result.empty:
+            return None
+        elif len(result) == 1:
+            val = result.iloc[0]
+            
+    if val is None:
+        return None
+
+    # Format the scalar value nicely
+    if isinstance(val, (int, float)):
+        val_str = f"{val:,.2f}" if isinstance(val, float) else f"{val:,}"
+    else:
+        val_str = str(val)
+        
+    measure_name = parsed_query.execution_plan.get("measure") or "result"
+    
+    return (
+        f"### Executive Summary\n"
+        f"The calculated {measure_name} is **{val_str}**.\n\n"
+        f"### Business Meaning\n"
+        f"Your analysis returned a direct value of {val_str} for {measure_name}.\n\n"
+        f"### Why This Happened\n"
+        f"This value was computed directly from the matching records in your active dataset.\n\n"
+        f"### Key Drivers\n"
+        f"The calculation is based on the active filters: {parsed_query.filters}.\n\n"
+        f"### Potential Risks\n"
+        f"Viewing a single aggregated metric can obscure underlying variations or outliers.\n\n"
+        f"### Recommendations\n"
+        f"We suggest breaking this metric down by Category or Region to see how it's distributed.\n\n"
+        f"### Suggested Next Questions\n"
+        f"1. Break down {measure_name} by Region\n"
+        f"2. Show monthly trend of {measure_name}\n"
+        f"3. What are the outliers for this metric?"
+    )
+
+
+def compile_badges_and_explanation(total_start: float, dataset_name: str, engine_type: str, llm_used: bool, parsed_query) -> tuple:
+    # 1. Badge details
+    badge_level = "Deterministic"
+    badge_desc = "No AI Generation"
+    badge_score = round((parsed_query.confidence or 0.95) * 100)
+    
+    if engine_type == "hybrid":
+        badge_level = "Hybrid"
+        badge_desc = "Planner Assisted"
+        badge_score = round((parsed_query.confidence or 0.80) * 100)
+    elif llm_used or engine_type in ["llm", "prediction"]:
+        badge_level = "AI Generated"
+        badge_desc = "LLM Assisted"
+        badge_score = round((parsed_query.confidence or 0.50) * 100)
+        
+    confidence_badge = {
+        "level": badge_level,
+        "score": badge_score,
+        "description": badge_desc
+    }
+
+    # 2. Explanation metadata
+    query_explanation = {
+        "dataset": dataset_name,
+        "measure": parsed_query.execution_plan.get("measure") or (parsed_query.aggregations[0]["column"] if parsed_query.aggregations else "None"),
+        "aggregation": parsed_query.aggregations[0]["operator"].upper() if parsed_query.aggregations else "None",
+        "groupby": parsed_query.execution_plan.get("groupby") or [],
+        "sorting": parsed_query.execution_plan.get("sorting") or [],
+        "limit": parsed_query.execution_plan.get("limit") or "None",
+        "engine": "Deterministic Engine" if badge_level == "Deterministic" else "Hybrid Planner" if badge_level == "Hybrid" else "LLM Generation Engine",
+        "execution_time": f"{round((time.time() - total_start) * 1000)} ms"
+    }
+    
+    return confidence_badge, query_explanation
+
+
 def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
     """
     S synchronous stream generator executing queries with SSE progress states.
@@ -335,6 +502,50 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
         selected_profile_desc += schema_cache.get_table_profile(name) + "\n"
         
     timings["Schema lookup"] = time.time() - t_start_schema
+
+    # Step 2.5: Hybrid Planner (if engine_type is hybrid)
+    if engine_type == "hybrid" and parsed_query:
+        print(f"[API QUERY] SSE event: type=progress, step=Generating Hybrid Execution Plan")
+        yield json.dumps({"type": "progress", "step": "Generating Hybrid Execution Plan"}) + "\n"
+        
+        t_start_hybrid = time.time()
+        hybrid_prompt = prompt_builder.build_prompt(
+            "hybrid_planner",
+            schema_desc=selected_schema_desc,
+            profile_desc=selected_profile_desc,
+            question=question
+        )
+        try:
+            manager = LLMManager()
+            raw_plan_json, _ = manager.call_llm_with_fallback(hybrid_prompt, model, 0.0)
+            
+            clean_str = raw_plan_json.strip().strip("`").replace("json\n", "").strip()
+            if clean_str.startswith("```"):
+                clean_str = clean_str.split("```")[1].strip()
+            
+            plan_data = json.loads(clean_str)
+            
+            # Map parsed JSON into parsed_query fields
+            parsed_query.intent = plan_data.get("intent", parsed_query.intent)
+            parsed_query.filters = plan_data.get("filters", parsed_query.filters)
+            parsed_query.aggregations = plan_data.get("aggregations", parsed_query.aggregations)
+            parsed_query.execution_plan["groupby"] = plan_data.get("groupby", parsed_query.execution_plan.get("groupby", []))
+            parsed_query.sorting = plan_data.get("sorting", parsed_query.sorting)
+            if plan_data.get("limit"):
+                parsed_query.execution_plan["limit"] = plan_data.get("limit")
+            parsed_query.execution_plan["filters"] = parsed_query.filters
+            parsed_query.execution_plan["aggregations"] = parsed_query.aggregations
+            parsed_query.execution_plan["sorting"] = parsed_query.sorting
+            parsed_query.execution_plan["intent"] = parsed_query.intent
+            
+            # Recompile DSL
+            from backend.services.query_parser import compile_to_dsl
+            parsed_query.execution_plan["dsl"] = compile_to_dsl(parsed_query.execution_plan)
+            
+        except Exception as e:
+            print(f"[HYBRID PLANNER WARNING] Hybrid planning failed: {e}")
+            
+        timings["Planner"] = time.time() - t_start_hybrid
 
     # Step 3: SHA256 Result Caching check
     t_start_cache = time.time()
@@ -631,7 +842,10 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
             code = f"result = {code_expr}"
             context.code = code
             
-            if parsed_query and parsed_query.intent == "id_lookup" and not result.empty:
+            local_exp = generate_local_explanation(question, result, parsed_query)
+            if local_exp:
+                context.explanation = local_exp
+            elif parsed_query and parsed_query.intent == "id_lookup" and not result.empty:
                 row_dict = result.iloc[0].to_dict()
                 kv_desc = ", ".join([f"{k}: {v}" for k, v in row_dict.items() if pd.notnull(v)])
                 context.explanation = f"I found the record for {parsed_query.execution_plan.get('id_column')} {parsed_query.execution_plan.get('id_value')}:\n{kv_desc}"
@@ -729,6 +943,18 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
                 max_val = val
                 slowest = stage
                 
+        confidence_badge, query_explanation = compile_badges_and_explanation(
+            total_start, dataset_name, engine_type, llm_used, parsed_query
+        )
+
+        from backend.services.insight_engine import run_result_heuristics
+        heuristics_data = {}
+        try:
+            if isinstance(result, pd.DataFrame):
+                heuristics_data = run_result_heuristics(result)
+        except Exception as e:
+            print(f"[HEURISTICS WARNING] Failed to compute heuristics: {e}")
+
         debug_info = {
             "timings": {k: round(v, 4) for k, v in timings.items()},
             "complexity": complexity,
@@ -751,8 +977,27 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
             "rows_before": len(df) if df is not None else 0,
             "rows_after": dataset_rows,
             "execution_time": timings.get("Execution", 0.0),
-            "returned_result": result_preview_str
+            "returned_result": result_preview_str,
+            "confidence_badge": confidence_badge,
+            "query_explanation": query_explanation,
+            "heuristics": heuristics_data
         }
+        suggestions_list = generate_smart_suggestions(question, parsed_query)
+        if suggestions_list and "### Suggested Next Questions" not in context.explanation:
+            suggestions_markdown = "\n\n### Suggested Next Questions\n" + "\n".join([f"{i+1}. {s}" for i, s in enumerate(suggestions_list)])
+            context.explanation += suggestions_markdown
+            
+        if explanation_level == "Technical":
+            technical_appendix = (
+                f"\n\n---\n"
+                f"### Technical Appendix\n"
+                f"- **Execution Engine**: {engine_type.upper()} Engine\n"
+                f"- **Formulas / Query Code**:\n```python\n{context.code}\n```\n"
+                f"- **Slowest Stage**: {slowest}\n"
+                f"- **Dataset Rows Processed**: {dataset_rows}\n"
+            )
+            context.explanation += technical_appendix
+
         debug_info_str = json.dumps(debug_info)
         timings["Serialization"] = time.time() - t_start_ser
         
@@ -768,7 +1013,10 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
             "explanation": context.explanation,
             "prompt_size": 0,
             "engine_used": engine_type,
-            "debug_info": debug_info
+            "debug_info": debug_info,
+            "confidence_badge": confidence_badge,
+            "query_explanation": query_explanation,
+            "suggestions": suggestions_list
         }
         engine.set_cached_result(cache_key, cached_payload)
         
@@ -809,7 +1057,9 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
             "explanation": context.explanation,
             "prompt_size": 0,
             "engine_used": engine_type,
-            "debug_info": debug_info
+            "debug_info": debug_info,
+            "confidence_badge": confidence_badge,
+            "query_explanation": query_explanation
         }
         print(f"[API QUERY] SSE event: type=success")
         yield json.dumps(final_payload) + "\n"
@@ -879,7 +1129,7 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
     manager = LLMManager()
     t_start_gen = time.time()
     
-    if engine_type not in ["metadata", "general_chat", "insight"]:
+    if engine_type not in ["metadata", "general_chat", "insight", "dashboard_gen"]:
         # Execute LLM to generate code
         try:
             raw_content, final_model = manager.call_llm_with_fallback(prompt, model, temperature)
@@ -939,6 +1189,40 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
             context.error = f"Failed in Insight Engine: {str(e)}"
             yield json.dumps({"type": "error", "status": "error", "error": context.error, "time_taken": round(time.time() - total_start, 3)}) + "\n"
             return
+    elif engine_type == "dashboard_gen":
+        try:
+            from backend.services.ai_dashboard import AIDashboardService
+            service = AIDashboardService()
+            layout = service.generate_dashboard(question, selected_schema_desc)
+            
+            # Format explanation matching 7 headers
+            context.explanation = (
+                f"### Executive Summary\n"
+                f"I have successfully created the **{layout.get('title')}** dashboard based on your request.\n\n"
+                f"### Business Meaning\n"
+                f"This dashboard contains {len(layout.get('cards', []))} metric widgets designed to track key indicators for this dataset.\n\n"
+                f"### Why This Happened\n"
+                f"The BI Architect mapped the request to the available columns and constructed relevant visualization cards.\n\n"
+                f"### Key Drivers\n"
+                f"Dashboard widgets: {', '.join([c.get('title') for c in layout.get('cards', [])])}.\n\n"
+                f"### Potential Risks\n"
+                f"Ensure the queries for each widget align with the expected transaction scopes.\n\n"
+                f"### Recommendations\n"
+                f"Open the dashboards workspace to customize or edit layout placements.\n\n"
+                f"### Suggested Next Questions\n"
+                f"1. Open the created dashboard\n"
+                f"2. Add a line chart for monthly trends to this dashboard\n"
+                f"3. Export dashboard as PDF"
+            )
+            
+            context.raw_result = pd.DataFrame([{"Dashboard ID": layout.get("id"), "Title": layout.get("title")}])
+            result = context.raw_result
+            code = f"# AI Dashboard Generation\n# Generated Dashboard ID: {layout.get('id')}\n# Layout:\n" + json.dumps(layout, indent=2)
+            context.code = code
+        except Exception as e:
+            context.error = f"Failed to generate dashboard: {str(e)}"
+            yield json.dumps({"type": "error", "status": "error", "error": context.error, "time_taken": round(time.time() - total_start, 3)}) + "\n"
+            return
     else:
         # Simple metadata / chat questions are answered directly
         try:
@@ -960,7 +1244,7 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
     dataset_rows = 0
     auto_retry_count = 0
     
-    if engine_type not in ["metadata", "general_chat", "insight"]:
+    if engine_type not in ["metadata", "general_chat", "insight", "dashboard_gen"]:
         print(f"[API QUERY] SSE event: type=progress, step=Executing Sandbox")
         yield json.dumps({"type": "progress", "step": "Executing Sandbox"}) + "\n"
         
@@ -1102,7 +1386,7 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
     wants_explain = engine_type not in ["metadata", "general_chat"]
     
     # Determine explanation level
-    explanation_level = "Normal"
+    explanation_level = config.settings.get("explain_level", "Normal")
     if "ceo" in question.lower() or "executive" in question.lower():
         explanation_level = "Executive"
     elif "technically" in question.lower() or "technical" in question.lower() or "code" in question.lower():
@@ -1113,27 +1397,34 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
         explanation_level = "Detailed"
         
     if wants_explain and not explanation:
-        print(f"[API QUERY] SSE event: type=progress, step=Generating Explanation")
-        yield json.dumps({"type": "progress", "step": "Generating Explanation"}) + "\n"
-        t_start = time.time()
-        
-        result_preview = result.to_string() if isinstance(result, (pd.DataFrame, pd.Series)) else str(result)
-        # Cap result preview in prompt context to avoid tokens overflow
-        if len(result_preview) > 1500:
-            result_preview = result_preview[:1500] + "\n[INFO] Truncated for token optimization..."
+        # Try local rule engine first for simple results
+        local_exp = generate_local_explanation(question, result, parsed_query)
+        if local_exp:
+            print(f"[API QUERY] Explanation generated instantly via Local Rule Engine")
+            explanation = local_exp
+            context.explanation = explanation
+        else:
+            print(f"[API QUERY] SSE event: type=progress, step=Generating Explanation")
+            yield json.dumps({"type": "progress", "step": "Generating Explanation"}) + "\n"
+            t_start = time.time()
             
-        summary_prompt = prompt_builder.build_prompt(
-            "explanation",
-            question=question,
-            result_str=result_preview,
-            explanation_level=explanation_level
-        )
-        try:
-            explanation, _ = manager.call_llm_with_fallback(summary_prompt, model, temperature)
-            context.explanation = explanation.strip()
-        except Exception as e:
-            context.explanation = "Data processed successfully."
-        timings["Generator"] += (time.time() - t_start)
+            result_preview = result.to_string() if isinstance(result, (pd.DataFrame, pd.Series)) else str(result)
+            # Cap result preview in prompt context to avoid tokens overflow
+            if len(result_preview) > 1500:
+                result_preview = result_preview[:1500] + "\n[INFO] Truncated for token optimization..."
+                
+            summary_prompt = prompt_builder.build_prompt(
+                "explanation",
+                question=question,
+                result_str=result_preview,
+                explanation_level=explanation_level
+            )
+            try:
+                explanation, _ = manager.call_llm_with_fallback(summary_prompt, model, temperature)
+                context.explanation = explanation.strip()
+            except Exception as e:
+                context.explanation = "Data processed successfully."
+            timings["Generator"] += (time.time() - t_start)
     elif not explanation:
         context.explanation = "Result processed."
 
@@ -1203,6 +1494,18 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
             max_val = val
             slowest = stage
             
+    confidence_badge, query_explanation = compile_badges_and_explanation(
+        total_start, dataset_name, engine_type, llm_used, parsed_query
+    )
+
+    from backend.services.insight_engine import run_result_heuristics
+    heuristics_data = {}
+    try:
+        if isinstance(result, pd.DataFrame):
+            heuristics_data = run_result_heuristics(result)
+    except Exception as e:
+        print(f"[HEURISTICS WARNING] Failed to compute heuristics: {e}")
+
     # Compile debug breakdown
     debug_info = {
         "timings": {k: round(v, 4) for k, v in timings.items()},
@@ -1216,9 +1519,28 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
         "slowest_stage": f"{slowest} ({max_val * 1000:.1f}ms)",
         "cache_used": False,
         "llm_used": True,
-        "parser_used": False
+        "parser_used": False,
+        "confidence_badge": confidence_badge,
+        "query_explanation": query_explanation,
+        "heuristics": heuristics_data
     }
     
+    suggestions_list = generate_smart_suggestions(question, parsed_query)
+    if suggestions_list and "### Suggested Next Questions" not in context.explanation:
+        suggestions_markdown = "\n\n### Suggested Next Questions\n" + "\n".join([f"{i+1}. {s}" for i, s in enumerate(suggestions_list)])
+        context.explanation += suggestions_markdown
+        
+    if explanation_level == "Technical":
+        technical_appendix = (
+            f"\n\n---\n"
+            f"### Technical Appendix\n"
+            f"- **Execution Engine**: {engine_type.upper()} Engine\n"
+            f"- **Formulas / Query Code**:\n```python\n{context.code}\n```\n"
+            f"- **Slowest Stage**: {slowest}\n"
+            f"- **Dataset Rows Processed**: {dataset_rows}\n"
+        )
+        context.explanation += technical_appendix
+
     debug_info_str = json.dumps(debug_info)
     timings["Serialization"] = time.time() - t_start_ser
     
@@ -1234,7 +1556,10 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
         "explanation": context.explanation,
         "prompt_size": context.prompt_size,
         "engine_used": engine_type,
-        "debug_info": debug_info
+        "debug_info": debug_info,
+        "confidence_badge": confidence_badge,
+        "query_explanation": query_explanation,
+        "suggestions": suggestions_list
     }
     engine.set_cached_result(cache_key, cached_payload)
     
@@ -1276,7 +1601,9 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
         "explanation": context.explanation,
         "prompt_size": context.prompt_size,
         "engine_used": engine_type,
-        "debug_info": debug_info
+        "debug_info": debug_info,
+        "confidence_badge": confidence_badge,
+        "query_explanation": query_explanation
     }
     print(f"[API QUERY] SSE event: type=success")
     yield json.dumps(final_payload) + "\n"

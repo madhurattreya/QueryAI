@@ -17,6 +17,9 @@ interface ChatMessage {
   engine_used?: string;
   debug_info?: any;
   progress_steps?: string[];
+  confidence_badge?: any;
+  query_explanation?: any;
+  suggestions?: string[];
 }
 
 interface Conversation {
@@ -79,6 +82,25 @@ export default function QueryPage() {
     fetchActiveDataset();
   }, [messages]);
   
+  const [technicalMode, setTechnicalMode] = useState(false);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch("http://127.0.0.1:8000/api/status");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.settings) {
+            setTechnicalMode(data.settings.technical_mode || false);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchStatus();
+  }, []);
+
   // Theme & Pinned Queries
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [pinnedQueries, setPinnedQueries] = useState<string[]>([]);
@@ -204,7 +226,10 @@ export default function QueryPage() {
           rows: m.rows,
           prompt_size: m.prompt_size,
           engine_used: m.engine_used,
-          debug_info: m.debug_info
+          debug_info: m.debug_info,
+          confidence_badge: m.debug_info?.confidence_badge,
+          query_explanation: m.debug_info?.query_explanation,
+          suggestions: m.debug_info?.suggestions
         }));
         setMessages(formattedMsgs);
       } else {
@@ -369,7 +394,10 @@ export default function QueryPage() {
                     rows: data.rows,
                     prompt_size: data.prompt_size,
                     engine_used: data.engine_used,
-                    debug_info: data.debug_info
+                    debug_info: data.debug_info,
+                    confidence_badge: data.confidence_badge,
+                    query_explanation: data.query_explanation,
+                    suggestions: data.suggestions
                   };
                 }
                 return updated;
@@ -648,6 +676,104 @@ export default function QueryPage() {
                         </div>
                       ) : (
                         <>
+                          {/* AI Confidence Badge & Metadata row */}
+                          {msg.confidence_badge && (
+                            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-outline-variant/30 mb-3">
+                              {/* Badge */}
+                              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase border ${
+                                msg.confidence_badge.level === "Deterministic"
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
+                                  : msg.confidence_badge.level === "Hybrid"
+                                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25"
+                                  : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/25"
+                              }`}>
+                                <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                                <span>{msg.confidence_badge.level} ({msg.confidence_badge.score}% Match)</span>
+                                <span className="text-[9px] opacity-75 font-medium ml-1">| {msg.confidence_badge.description}</span>
+                              </div>
+
+                              {/* Query Explanation Collapsible Panel */}
+                              {msg.query_explanation && (
+                                <details className="w-full mt-2 group">
+                                  <summary className="text-[10px] font-bold text-on-surface-variant hover:text-deep-navy cursor-pointer list-none flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[10px] transition-transform group-open:rotate-90">play_arrow</span>
+                                    <span>Execution Details ({msg.query_explanation.engine} • {msg.query_explanation.execution_time})</span>
+                                  </summary>
+                                  <div className="mt-2 p-3 bg-surface-container-lowest border border-outline-variant/30 rounded-lg text-[10px] grid grid-cols-2 sm:grid-cols-4 gap-3 font-semibold text-on-surface-variant font-mono">
+                                    <div>
+                                      <span className="block text-[8px] text-outline uppercase font-bold mb-0.5">Dataset</span>
+                                      <span className="text-deep-navy truncate block">{msg.query_explanation.dataset}</span>
+                                    </div>
+                                    <div>
+                                      <span className="block text-[8px] text-outline uppercase font-bold mb-0.5">Metric / Agg</span>
+                                      <span className="text-deep-navy truncate block">{msg.query_explanation.measure} ({msg.query_explanation.aggregation})</span>
+                                    </div>
+                                    <div>
+                                      <span className="block text-[8px] text-outline uppercase font-bold mb-0.5">Group By</span>
+                                      <span className="text-deep-navy truncate block">
+                                        {msg.query_explanation.groupby && msg.query_explanation.groupby.length > 0 ? msg.query_explanation.groupby.join(", ") : "None"}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <span className="block text-[8px] text-outline uppercase font-bold mb-0.5">Limit</span>
+                                      <span className="text-deep-navy truncate block">{msg.query_explanation.limit}</span>
+                                    </div>
+                                  </div>
+                                </details>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Programmatic Heuristics Alerts */}
+                          {msg.debug_info?.heuristics && (
+                            (() => {
+                              const h = msg.debug_info.heuristics;
+                              const alerts: string[] = [];
+                              
+                              if (h.missing_values && Object.keys(h.missing_values).length > 0) {
+                                Object.entries(h.missing_values).forEach(([col, val]) => {
+                                  alerts.push(`Column '${col}' contains ${val} missing values.`);
+                                });
+                              }
+                              if (h.duplicates_count && h.duplicates_count > 0) {
+                                alerts.push(`Detected ${h.duplicates_count} exact duplicate rows in the result set.`);
+                              }
+                              if (h.outliers && Object.keys(h.outliers).length > 0) {
+                                Object.entries(h.outliers).forEach(([col, details]: [string, any]) => {
+                                  alerts.push(`Outlier Alert: Found ${details.count} outliers in '${col}' (Expected range: [${details.lower_bound.toFixed(1)}, ${details.upper_bound.toFixed(1)}]).`);
+                                });
+                              }
+                              if (h.anomalies && h.anomalies.length > 0) {
+                                h.anomalies.forEach((a: any) => {
+                                  alerts.push(`Anomaly in '${a.column}': ${a.description}`);
+                                });
+                              }
+                              if (h.seasonality && h.seasonality.is_seasonal) {
+                                const peakMonthName = new Date(0, h.seasonality.peak_month - 1).toLocaleString('default', { month: 'long' });
+                                alerts.push(`Seasonal Trend: High variance across periods. Peak month is ${peakMonthName} (CV = ${h.seasonality.coefficient_of_variation.toFixed(2)}).`);
+                              }
+                              
+                              if (alerts.length === 0) return null;
+                              
+                              return (
+                                <div className="mt-2 p-3 bg-vibrant-blue/5 border border-vibrant-blue/15 rounded-lg space-y-1.5 mb-3">
+                                  <h5 className="text-[10px] font-bold text-deep-navy uppercase tracking-wider flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-xs text-vibrant-blue font-variation-settings-fill" style={{ fontVariationSettings: "'FILL' 1" }}>insights</span>
+                                    <span>Programmatic Heuristics Alerts</span>
+                                  </h5>
+                                  <ul className="space-y-1">
+                                    {alerts.map((alert, aIdx) => (
+                                      <li key={aIdx} className="text-[10px] font-semibold text-on-surface-variant flex items-start gap-1">
+                                        <span className="shrink-0 text-vibrant-blue">•</span>
+                                        <span>{alert}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              );
+                            })()
+                          )}
+
                           {/* Explanation summary */}
                           {msg.content && (
                             <div>
@@ -690,7 +816,7 @@ export default function QueryPage() {
                           )}
 
                           {/* Code section */}
-                          {msg.generated_code && (
+                          {technicalMode && msg.generated_code && (
                             <div>
                               <div className="flex justify-between items-center mb-1">
                                 <button
@@ -787,6 +913,23 @@ export default function QueryPage() {
                                 </span>
                               )}
                             </div>
+                            
+                            {msg.suggestions && msg.suggestions.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-outline-variant/20">
+                                <h5 className="text-[9px] font-bold text-deep-navy uppercase tracking-wider mb-2">Suggested Next Questions</h5>
+                                <div className="flex flex-wrap gap-2">
+                                  {msg.suggestions.map((suggestion, sIdx) => (
+                                    <button
+                                      key={sIdx}
+                                      onClick={() => handleSend(suggestion)}
+                                      className="bg-vibrant-blue/5 hover:bg-vibrant-blue/15 text-vibrant-blue text-[10px] px-2.5 py-1.5 rounded-full border border-vibrant-blue/20 transition-all font-semibold cursor-pointer shadow-xs"
+                                    >
+                                      {suggestion}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </>
                       )}

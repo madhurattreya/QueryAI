@@ -9,7 +9,10 @@ class SemanticModelManager:
             cls._instance = super(SemanticModelManager, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
-    def add_model_item(self, dataset_id: str, name: str, item_type: str, expression: str, definition: str = "") -> str:
+    def add_model_item(self, dataset_id: str, name: str, item_type: str, expression: str, definition: str = "",
+                       display_name: str = "", description: str = "", business_meaning: str = "", synonyms: str = "",
+                       units: str = "", aggregation: str = "", category: str = "", is_measure: int = 0, is_dimension: int = 0,
+                       hierarchy: str = "") -> str:
         """
         Adds a semantic item (dimension, measure, calculation, hierarchy) to the semantic model.
         """
@@ -19,10 +22,18 @@ class SemanticModelManager:
         
         cursor.execute(
             """
-            INSERT INTO semantic_model (id, dataset_id, name, type, expression, definition)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO semantic_model (
+                id, dataset_id, name, type, expression, definition,
+                display_name, description, business_meaning, synonyms,
+                units, aggregation, category, is_measure, is_dimension, hierarchy
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (item_id, dataset_id, name, item_type, expression, definition)
+            (
+                item_id, dataset_id, name, item_type, expression, definition,
+                display_name, description, business_meaning, synonyms,
+                units, aggregation, category, is_measure, is_dimension, hierarchy
+            )
         )
         conn.commit()
         conn.close()

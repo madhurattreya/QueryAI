@@ -65,6 +65,29 @@ export default function ConnectPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
 
+  // Health report state
+  const [healthDataset, setHealthDataset] = useState<Dataset | null>(null);
+  const [healthData, setHealthData] = useState<any>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+
+  const viewHealth = async (ds: Dataset) => {
+    setActiveMenuId(null);
+    setHealthDataset(ds);
+    setHealthLoading(true);
+    setHealthData(null);
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/datasets/health/${ds.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setHealthData(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setHealthLoading(false);
+    }
+  };
+
   const fetchDatasets = async () => {
     try {
       const res = await fetch("http://127.0.0.1:8000/api/datasets");
@@ -555,12 +578,19 @@ export default function ConnectPage() {
                             <span className="material-symbols-outlined text-sm">preview</span>
                             Preview
                           </button>
-                          <button
+                           <button
                             onClick={() => viewSchema(ds)}
                             className="w-full text-left px-3 py-1.5 hover:bg-surface-container text-on-surface flex items-center gap-1.5 cursor-pointer"
                           >
                             <span className="material-symbols-outlined text-sm">toc</span>
                             View Schema
+                          </button>
+                          <button
+                            onClick={() => viewHealth(ds)}
+                            className="w-full text-left px-3 py-1.5 hover:bg-surface-container text-on-surface flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-sm">health_and_safety</span>
+                            Health Check
                           </button>
                           <button
                             onClick={() => triggerRename(ds)}
@@ -671,6 +701,137 @@ export default function ConnectPage() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dataset Health Modal Overlay */}
+      {healthDataset && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-white border border-outline-variant rounded-xl p-6 w-full max-w-2xl flex flex-col shadow-2xl max-h-[85vh]">
+            <div className="flex justify-between items-center mb-4 border-b pb-3">
+              <h3 className="text-sm font-bold text-deep-navy uppercase tracking-wider flex items-center gap-2">
+                <span className="material-symbols-outlined text-vibrant-blue">health_and_safety</span>
+                AI Dataset Health Report: {healthDataset.name}
+              </h3>
+              <button
+                onClick={() => setHealthDataset(null)}
+                className="text-on-surface-variant hover:text-deep-navy cursor-pointer"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {healthLoading ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <div className="w-8 h-8 rounded-full border-4 border-vibrant-blue border-t-transparent animate-spin"></div>
+                <p className="text-xs text-on-surface-variant font-bold">Analyzing dataset quality metrics...</p>
+              </div>
+            ) : healthData ? (
+              <div className="flex-grow overflow-y-auto space-y-6 pr-1 text-xs text-on-surface-variant font-semibold">
+                
+                {/* Highlights Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-surface-container/30 p-4 rounded-xl border border-outline-variant/30">
+                  <div className="bg-white p-3 rounded-lg shadow-xs">
+                    <span className="text-[9px] uppercase tracking-wider text-outline block mb-0.5">Rows / Columns</span>
+                    <span className="text-sm font-bold text-deep-navy">{healthData.total_rows} × {healthData.total_columns}</span>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg shadow-xs">
+                    <span className="text-[9px] uppercase tracking-wider text-outline block mb-0.5">Missing Cells %</span>
+                    <span className={`text-sm font-bold ${healthData.overall_missing_pct > 15 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                      {healthData.overall_missing_pct}%
+                    </span>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg shadow-xs">
+                    <span className="text-[9px] uppercase tracking-wider text-outline block mb-0.5">Duplicates</span>
+                    <span className={`text-sm font-bold ${healthData.duplicates_count > 0 ? 'text-error' : 'text-emerald-500'}`}>
+                      {healthData.duplicates_count} ({healthData.duplicates_pct}%)
+                    </span>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg shadow-xs">
+                    <span className="text-[9px] uppercase tracking-wider text-outline block mb-0.5">Data Freshness</span>
+                    <span className="text-xs font-bold text-deep-navy truncate block">{healthData.freshness}</span>
+                  </div>
+                </div>
+
+                {/* Recommended Fixes */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-bold text-deep-navy uppercase tracking-wider">Recommended Fixes</h4>
+                  <div className="space-y-2">
+                    {healthData.recommended_fixes.map((fix: any, idx: number) => (
+                      <div key={idx} className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg flex items-start gap-2.5">
+                        <span className="material-symbols-outlined text-amber-500 text-sm mt-0.5">build</span>
+                        <div>
+                          <p className="font-bold text-deep-navy">{fix.issue}</p>
+                          <p className="text-[11px] text-outline mt-0.5">Recommended Action: {fix.fix}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Columns Detail */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-bold text-deep-navy uppercase tracking-wider">Column Metrics & Skewness</h4>
+                  <div className="overflow-x-auto border border-outline-variant/30 rounded-lg bg-surface-container-lowest">
+                    <table className="w-full text-left border-collapse text-[10px]">
+                      <thead>
+                        <tr className="bg-surface-container border-b border-outline-variant/40 text-deep-navy uppercase tracking-wider font-bold">
+                          <th className="p-2">Column</th>
+                          <th className="p-2">Missing %</th>
+                          <th className="p-2">Skewness</th>
+                          <th className="p-2">Outliers</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-outline-variant/30 font-mono">
+                        {Object.entries(healthData.missing_pct_per_column).map(([col, pct]: any) => {
+                          const skew = healthData.skewness[col] !== undefined ? healthData.skewness[col] : "N/A";
+                          const outlier = healthData.outliers[col] ? `${healthData.outliers[col].count} (${healthData.outliers[col].percentage}%)` : "0";
+                          return (
+                            <tr key={col} className="hover:bg-surface-container/50">
+                              <td className="p-2 font-bold text-deep-navy">{col}</td>
+                              <td className={`p-2 font-bold ${pct > 20 ? 'text-amber-500' : 'text-on-surface'}`}>{pct}%</td>
+                              <td className="p-2">{skew}</td>
+                              <td className="p-2">{outlier}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Correlations */}
+                {healthData.high_correlations.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-[10px] font-bold text-deep-navy uppercase tracking-wider">Strong Pearson Correlations</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {healthData.high_correlations.map((c: any, idx: number) => (
+                        <div key={idx} className="px-3 py-1.5 bg-vibrant-blue/5 border border-vibrant-blue/15 rounded-lg flex items-center gap-1">
+                          <span className="font-mono text-deep-navy font-bold">{c.col1}</span>
+                          <span className="text-outline">↔</span>
+                          <span className="font-mono text-deep-navy font-bold">{c.col2}</span>
+                          <span className="font-bold text-vibrant-blue bg-vibrant-blue/10 px-1.5 py-0.5 rounded ml-1">r = {c.r}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            ) : (
+              <p className="text-xs text-on-surface-variant text-center py-10">Failed to analyze health diagnostics.</p>
+            )}
+
+            <div className="border-t pt-3 mt-4 flex justify-end">
+              <button
+                onClick={() => setHealthDataset(null)}
+                className="bg-deep-navy text-white text-xs font-bold py-2 px-4 rounded-lg cursor-pointer hover:bg-primary-container transition-all"
+              >
+                Close Report
+              </button>
+            </div>
+
           </div>
         </div>
       )}

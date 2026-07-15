@@ -14,7 +14,8 @@ settings = {
     "model": "qwen2.5:7b",
     "explain_mode": True,
     "debug_mode": False,
-    "fast_mode": False
+    "fast_mode": False,
+    "technical_mode": False
 }
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")

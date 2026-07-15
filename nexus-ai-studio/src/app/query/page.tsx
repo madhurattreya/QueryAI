@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ApiClient } from "@/lib/apiClient";
 
 interface ChatMessage {
   id?: string;
@@ -51,7 +52,7 @@ export default function QueryPage() {
 
   const fetchActiveDataset = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/datasets");
+      const res = await fetch(ApiClient.getUrl("/api/datasets"));
       if (res.ok) {
         const data = await res.json();
         const active = data.find((ds: any) => ds.is_active === 1);
@@ -62,7 +63,7 @@ export default function QueryPage() {
         const schemas: { [key: string]: any[] } = {};
         for (const ds of data) {
           try {
-            const schemaRes = await fetch(`http://127.0.0.1:8000/api/datasets/schema/${ds.id}`);
+            const schemaRes = await fetch(ApiClient.getUrl(`/api/datasets/schema/${ds.id}`));
             if (schemaRes.ok) {
               const schemaData = await schemaRes.json();
               schemas[ds.id] = schemaData.columns || [];
@@ -87,7 +88,7 @@ export default function QueryPage() {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/status");
+        const res = await fetch(ApiClient.getUrl("/api/status"));
         if (res.ok) {
           const data = await res.json();
           if (data.settings) {
@@ -170,7 +171,7 @@ export default function QueryPage() {
   // Load conversations list on mount
   const fetchConversations = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/conversations");
+      const res = await fetch(ApiClient.getUrl("/api/conversations"));
       if (res.ok) {
         const data = await res.json();
         setConversations(data);
@@ -189,7 +190,7 @@ export default function QueryPage() {
     const delayDebounceFn = setTimeout(async () => {
       if (searchQuery.trim()) {
         try {
-          const res = await fetch(`http://127.0.0.1:8000/api/conversations/search?q=${encodeURIComponent(searchQuery)}`);
+          const res = await fetch(ApiClient.getUrl(`/api/conversations/search?q=${encodeURIComponent(searchQuery)}`));
           if (res.ok) {
             const data = await res.json();
             setConversations(data);
@@ -212,7 +213,7 @@ export default function QueryPage() {
     setMessages([]);
     setErrorMessage("");
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/conversation/${id}`);
+      const res = await fetch(ApiClient.getUrl(`/api/conversation/${id}`));
       if (res.ok) {
         const data = await res.json();
         const formattedMsgs: ChatMessage[] = data.messages.map((m: any) => ({
@@ -246,7 +247,7 @@ export default function QueryPage() {
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this conversation?")) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/conversation/${id}`, {
+      const res = await fetch(ApiClient.getUrl(`/api/conversation/${id}`), {
         method: "DELETE"
       });
       if (res.ok) {
@@ -325,7 +326,7 @@ export default function QueryPage() {
     ]);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/query", {
+      const res = await fetch(ApiClient.getUrl("/api/query"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -426,17 +427,15 @@ export default function QueryPage() {
         console.log("Query cancelled by user.");
         return;
       }
+      const errorPayload = ApiClient.classifyError(err);
       setMessages((prev) => {
         const updated = [...prev];
         const loadIdx = updated.findIndex((m) => m.id === "loading");
         if (loadIdx !== -1) {
-          const isNetworkErr = err.message?.toLowerCase().includes("fetch") || err.message?.toLowerCase().includes("network") || err.message?.toLowerCase().includes("failed");
           updated[loadIdx] = {
             role: "assistant",
             content: "Query Execution Failed.",
-            error: isNetworkErr
-              ? "Cannot connect to the backend server. Make sure the backend is running on port 8000, and that an active dataset is loaded."
-              : (err.message || "An unexpected error occurred. Please try again.")
+            error: `${errorPayload.userMessage}${errorPayload.technicalDetail ? ` (Details: ${errorPayload.technicalDetail})` : ""}`
           };
         }
         return updated;
@@ -789,7 +788,7 @@ export default function QueryPage() {
                                 <span>Interactive Visualization</span>
                                 <div className="flex gap-2">
                                   <a
-                                    href={`http://127.0.0.1:8000/api/chart/html?id=${msg.chart_id}`}
+                                    href={ApiClient.getUrl(`/api/chart/html?id=${msg.chart_id}`)}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="text-[9px] bg-surface-container border border-outline-variant/30 px-2 py-0.5 rounded hover:bg-surface-container-high text-on-surface transition-colors cursor-pointer"
@@ -797,7 +796,7 @@ export default function QueryPage() {
                                     Open Full Screen
                                   </a>
                                   <a
-                                    href={`http://127.0.0.1:8000/api/chart/png?id=${msg.chart_id}`}
+                                    href={ApiClient.getUrl(`/api/chart/png?id=${msg.chart_id}`)}
                                     download={`chart_${msg.chart_id}.png`}
                                     className="text-[9px] bg-surface-container border border-outline-variant/30 px-2 py-0.5 rounded hover:bg-surface-container-high text-on-surface transition-colors cursor-pointer"
                                   >
@@ -807,7 +806,7 @@ export default function QueryPage() {
                               </h4>
                               <div className="w-full h-[320px] bg-white rounded-lg overflow-hidden border border-outline-variant/30 relative">
                                 <iframe
-                                  src={`http://127.0.0.1:8000/api/chart/html?id=${msg.chart_id}`}
+                                  src={ApiClient.getUrl(`/api/chart/html?id=${msg.chart_id}`)}
                                   className="w-full h-full border-none bg-white"
                                   title="Plotly Chart"
                                 />

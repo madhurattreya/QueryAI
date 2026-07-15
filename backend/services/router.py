@@ -37,8 +37,11 @@ def classify_query_engine_detailed(question: str, prev_plan: dict = None, conver
     """
     Hierarchical cost-based planner and router.
     Resolves query target based on complexity, confidence, and local capability.
+    Wires the new QueryPlanner for fast deterministic execution & fuzzy column recovery.
     """
-    from backend.services.query_parser import parse_question
+    from backend.services.query_planner import QueryPlanner
+    from backend.services.query_parser import ParsedQuery, parse_question
+    from backend.models.execution_plan import EngineType, IntentType
     
     # Retrieve active dataset
     active_df = None
@@ -47,6 +50,104 @@ def classify_query_engine_detailed(question: str, prev_plan: dict = None, conver
         active_df_name = list(config.datasets.keys())[0]
         active_df = config.datasets[active_df_name]
         
+    # ─── New Phase B QueryPlanner Integration ──────────────────────────────
+    planner = QueryPlanner(active_df_name)
+    plan = planner.plan(question)
+    
+    # Check if we can intercept with deterministic query engine
+    is_det_eligible = (
+        plan.confidence >= config.app_settings.confidence_threshold_deterministic or
+        plan.engine_type in [EngineType.GENERAL_CHAT, EngineType.KPI_DASHBOARD, EngineType.METADATA]
+    )
+    
+    if is_det_eligible:
+        # Check validation errors
+        has_val_errors = plan.validation_result and plan.validation_result.has_errors
+        
+        if not has_val_errors:
+            # Reconstruct legacy ParsedQuery using resolved/recovered columns
+            # Apply warnings/suggestions to filters/aggregations
+            filters_legacy = []
+            for f in plan.filters:
+                # Patch corrected name if resolved via resolver
+                col_name = f.column
+                res = plan.column_resolution.get(f.column)
+                if res and res.is_resolved and res.resolved_column:
+                    col_name = res.resolved_column
+                filters_legacy.append({"column": col_name, "operator": f.operator, "value": f.value})
+                
+            aggs_legacy = []
+            for a in plan.aggregations:
+                col_name = a.column
+                res = plan.column_resolution.get(a.column)
+                if res and res.is_resolved and res.resolved_column:
+                    col_name = res.resolved_column
+                aggs_legacy.append({"column": col_name, "operator": a.operator})
+                
+            sorts_legacy = []
+            for s in plan.sorting:
+                col_name = s.column
+                res = plan.column_resolution.get(s.column)
+                if res and res.is_resolved and res.resolved_column:
+                    col_name = res.resolved_column
+                sorts_legacy.append({"column": col_name, "ascending": s.ascending})
+                
+            cols_legacy = []
+            for c in plan.selected_columns:
+                res = plan.column_resolution.get(c)
+                if res and res.is_resolved and res.resolved_column:
+                    cols_legacy.append(res.resolved_column)
+                else:
+                    cols_legacy.append(c)
+
+            # Map engine types to legacy engine strings
+            legacy_engine = "deterministic"
+            if plan.engine_type == EngineType.METADATA:
+                legacy_engine = "metadata"
+            elif plan.engine_type == EngineType.GENERAL_CHAT:
+                legacy_engine = "general_chat"
+            elif plan.engine_type == EngineType.KPI_DASHBOARD:
+                legacy_engine = "kpi_dashboard"
+                
+            parsed = ParsedQuery(
+                intent=plan.intent.value,
+                confidence=plan.confidence,
+                filters=filters_legacy,
+                aggregations=aggs_legacy,
+                sorting=sorts_legacy,
+                chart_type=plan.intent.value if plan.intent == IntentType.VISUALIZATION else None,
+                execution_plan={
+                    "intent": plan.intent.value,
+                    "groupby": plan.groupby,
+                    "limit": plan.limit,
+                    "question": question,
+                    "matched_columns": cols_legacy,
+                    "measure": aggs_legacy[0]["column"] if aggs_legacy else "result",
+                },
+                entities={
+                    "matched_columns": cols_legacy,
+                    "matched_categorical": {}
+                }
+            )
+            
+            # Map parameters for telemetry logs
+            matched_values = []
+            matched_keywords = [plan.intent.value]
+            
+            print(f"[API QUERY] Deterministic route intercepted: intent={plan.intent.value}, engine={legacy_engine}")
+            return {
+                "engine": legacy_engine,
+                "confidence": plan.confidence,
+                "matched_columns": cols_legacy,
+                "matched_values": matched_values,
+                "matched_keywords": matched_keywords,
+                "fallback_reason": None,
+                "llm_used": False,
+                "execution_cost": 0.1,
+                "parsed_query": parsed
+            }
+            
+    # ─── Legacy Fallback ──────────────────────────────────────────────────
     # Execute parser
     parsed = parse_question(question, active_df, active_df_name, prev_plan=prev_plan, conversation_id=conversation_id)
     
@@ -91,7 +192,7 @@ def classify_query_engine_detailed(question: str, prev_plan: dict = None, conver
     # 7. SQL or LLM fallback
     else:
         # Check confidence
-        if parsed.confidence < 0.60:
+        if parsed.confidence < config.app_settings.confidence_threshold_hybrid:
             llm_used = True
             cost = 2.0  # High cost of LLM invocation
             if "forecast" in q_lower or "predict" in q_lower:
@@ -102,12 +203,12 @@ def classify_query_engine_detailed(question: str, prev_plan: dict = None, conver
                 fallback_reason = "SQL database engine requires LLM translation."
             else:
                 engine_selected = "llm"
-                fallback_reason = f"Confidence score {parsed.confidence:.2f} is below hybrid threshold 0.60."
-        elif parsed.confidence < 0.85:
+                fallback_reason = f"Confidence score {parsed.confidence:.2f} is below hybrid threshold {config.app_settings.confidence_threshold_hybrid}."
+        elif parsed.confidence < config.app_settings.confidence_threshold_deterministic:
             llm_used = False  # Runs deterministically through hybrid execution plan parser
             engine_selected = "hybrid"
             cost = 0.5
-            fallback_reason = f"Confidence score {parsed.confidence:.2f} is in hybrid range [0.60, 0.85)."
+            fallback_reason = f"Confidence score {parsed.confidence:.2f} is in hybrid range [{config.app_settings.confidence_threshold_hybrid}, {config.app_settings.confidence_threshold_deterministic})."
         else:
             engine_selected = "deterministic"
             cost = 0.2
@@ -170,10 +271,10 @@ Question:
 {question}
 """
     try:
-        model = config.settings.get("model", "qwen2.5:7b")
+        model = config.settings.get("model", config.app_settings.default_model)
         from backend.services.llm import LLMManager
         manager = LLMManager()
-        content, _ = manager.call_llm_with_fallback(prompt, model)
+        content, _, _llm_metrics = manager.call_llm_with_fallback(prompt, model)
         content = content.strip()
         content = re.sub(r'[^a-zA-Z0-9_,\s]', '', content)
         selected = [name.strip() for name in content.split(",") if name.strip()]

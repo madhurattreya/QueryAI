@@ -148,8 +148,8 @@ Return only the markdown formatted text. Do not write introductory or concluding
 """
     from backend.services.llm import LLMManager
     try:
-        model = config.settings.get("model", "qwen2.5:7b")
-        explanation, _ = LLMManager().call_llm_with_fallback(prompt, model, 0.0)
+        model = config.settings.get("model", config.app_settings.default_model)
+        explanation, _, _llm_metrics = LLMManager().call_llm_with_fallback(prompt, model, 0.0)
         return explanation.strip()
     except Exception:
         return "### Executive Summary\n" + raw_insights_text

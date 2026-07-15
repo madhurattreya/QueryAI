@@ -55,9 +55,9 @@ class AIDashboardService:
         Uses LLM to generate a complete dashboard layout configuration.
         """
         prompt = DASHBOARD_PROMPT.format(question=question, schema=schema_desc)
-        model = config.settings.get("model", "qwen2.5:7b")
+        model = config.settings.get("model", config.app_settings.default_model)
         try:
-            raw_response, _ = self.llm_manager.call_llm_with_fallback(prompt, model, 0.0)
+            raw_response, _, _llm_metrics = self.llm_manager.call_llm_with_fallback(prompt, model, 0.0)
             
             # Clean response of backticks
             clean_str = raw_response.strip().strip("`").replace("json\n", "").strip()

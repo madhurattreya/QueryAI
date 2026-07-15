@@ -8,6 +8,7 @@ DB_FILE = os.path.join(DATA_DIR, "studio_metadata.db")
 
 def get_db_connection():
     conn = sqlite3.connect(DB_FILE)
+    conn.execute("PRAGMA foreign_keys = ON;")
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -76,7 +77,8 @@ def init_db():
         prompt_size INTEGER,
         engine_used TEXT,
         debug_info TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     )
     """)
     
@@ -91,7 +93,9 @@ def init_db():
         chart_type TEXT,
         html_path TEXT,
         png_path TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+        FOREIGN KEY(message_id) REFERENCES messages(id) ON DELETE CASCADE
     )
     """)
     
@@ -261,7 +265,8 @@ def init_db():
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         change_description TEXT,
         status TEXT DEFAULT 'Draft',
-        layout TEXT
+        layout TEXT,
+        FOREIGN KEY(dashboard_id) REFERENCES dashboards(id) ON DELETE CASCADE
     )
     """)
 
@@ -336,6 +341,16 @@ def init_db():
     add_col("dashboards", "workspace_id", "TEXT")
     add_col("conversations", "workspace_id", "TEXT")
             
+    # Secondary performance indexes
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_conversations_dataset_id ON conversations(dataset_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_conversations_workspace_id ON conversations(workspace_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_charts_message_id ON charts(message_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_dashboards_workspace_id ON dashboards(workspace_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_username ON audit_logs(username)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_scheduler_jobs_dashboard_id ON scheduler_jobs(dashboard_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_datasets_workspace_id ON datasets(workspace_id)")
+
     conn.commit()
     conn.close()
 

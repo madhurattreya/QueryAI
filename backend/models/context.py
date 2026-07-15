@@ -1,5 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional
+import backend.config as _config
 
 class ExecutionContext(BaseModel):
     conversation_id: str
@@ -11,7 +12,7 @@ class ExecutionContext(BaseModel):
     router_result: str = ""
     cached: bool = False
     history: List[Dict[str, Any]] = []
-    model: str = "qwen2.5:7b"
+    model: str = Field(default_factory=lambda: _config.app_settings.default_model)
     temperature: float = 0.0
     prompt: str = ""
     question: str = ""

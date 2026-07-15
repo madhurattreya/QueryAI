@@ -8,9 +8,11 @@ import backend.config as config
 
 router = APIRouter(prefix="/api/export")
 
+from fastapi.concurrency import run_in_threadpool
+
 @router.get("/dashboard/excel/{id}")
-def export_dashboard_excel(id: str):
-    try:
+async def export_dashboard_excel(id: str):
+    def generate_excel():
         db_manager = DashboardManager()
         dash = db_manager.get_dashboard(id)
         if not dash:
@@ -48,8 +50,11 @@ def export_dashboard_excel(id: str):
                     df.head(100).to_excel(writer, sheet_name=sheet_name[:30], index=False)
                     
         output.seek(0)
-        
-        filename = f"{dash['title'].replace(' ', '_')}_Export.xlsx"
+        return output, dash["title"]
+
+    try:
+        output, title = await run_in_threadpool(generate_excel)
+        filename = f"{title.replace(' ', '_')}_Export.xlsx"
         headers = {
             'Content-Disposition': f'attachment; filename="{filename}"'
         }
@@ -58,6 +63,8 @@ def export_dashboard_excel(id: str):
             headers=headers,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

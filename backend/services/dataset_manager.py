@@ -353,6 +353,16 @@ class DatasetManager:
                     self._fix_bom_columns(engine_obj, flavor)
                     
             config.datasets = loaded_dfs
+            
+            # Build and register Schema Index for each activated dataset
+            from backend.services.schema_index import SchemaIndexRegistry
+            for name, df in loaded_dfs.items():
+                try:
+                    SchemaIndexRegistry.build_or_refresh(name, df)
+                    print(f"[SCHEMA INDEX] Built and registered index for: {name}")
+                except Exception as ex:
+                    print(f"[SCHEMA INDEX WARNING] Failed to build index for {name}: {ex}")
+
             conn.commit()
             conn.close()
             

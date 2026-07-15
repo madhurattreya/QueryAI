@@ -327,26 +327,50 @@ def execute_parsed_query(parsed: ParsedQuery, df: pd.DataFrame, df_name: str = "
                 except Exception as e:
                     print(f"[FORMULA ENGINE WARNING] Grouped calculated measure failed: {e}")
 
+            # When agg_col is the same as a groupby column (e.g. "count departments by Department"),
+            # pandas raises "cannot insert X, already exists" on reset_index().
+            # Use size() in that case which avoids the collision.
+            agg_col_in_groupby = agg_col in groupby_cols
+
             if agg_op == "mean":
-                res = active_df.groupby(groupby_cols)[agg_col].mean().reset_index()
+                if agg_col_in_groupby:
+                    res = active_df.groupby(groupby_cols).size().reset_index(name="count")
+                else:
+                    res = active_df.groupby(groupby_cols)[agg_col].mean().reset_index()
                 op_str = ".mean()"
             elif agg_op == "sum":
-                res = active_df.groupby(groupby_cols)[agg_col].sum().reset_index()
+                if agg_col_in_groupby:
+                    res = active_df.groupby(groupby_cols).size().reset_index(name="count")
+                else:
+                    res = active_df.groupby(groupby_cols)[agg_col].sum().reset_index()
                 op_str = ".sum()"
             elif agg_op == "count":
-                res = active_df.groupby(groupby_cols)[agg_col].count().reset_index()
-                op_str = ".count()"
+                # Always safe to use size() for count — it avoids the index collision
+                res = active_df.groupby(groupby_cols).size().reset_index(name="count")
+                op_str = ".size()"
             elif agg_op == "max":
-                res = active_df.groupby(groupby_cols)[agg_col].max().reset_index()
+                if agg_col_in_groupby:
+                    res = active_df.groupby(groupby_cols).size().reset_index(name="count")
+                else:
+                    res = active_df.groupby(groupby_cols)[agg_col].max().reset_index()
                 op_str = ".max()"
             elif agg_op == "min":
-                res = active_df.groupby(groupby_cols)[agg_col].min().reset_index()
+                if agg_col_in_groupby:
+                    res = active_df.groupby(groupby_cols).size().reset_index(name="count")
+                else:
+                    res = active_df.groupby(groupby_cols)[agg_col].min().reset_index()
                 op_str = ".min()"
             elif agg_op == "median":
-                res = active_df.groupby(groupby_cols)[agg_col].median().reset_index()
+                if agg_col_in_groupby:
+                    res = active_df.groupby(groupby_cols).size().reset_index(name="count")
+                else:
+                    res = active_df.groupby(groupby_cols)[agg_col].median().reset_index()
                 op_str = ".median()"
             else:
-                res = active_df.groupby(groupby_cols)[agg_col].mean().reset_index()
+                if agg_col_in_groupby:
+                    res = active_df.groupby(groupby_cols).size().reset_index(name="count")
+                else:
+                    res = active_df.groupby(groupby_cols)[agg_col].mean().reset_index()
                 op_str = ".mean()"
                 
             code_expr = f"{base_df_ref}{groupby_expr}['{agg_col}']{op_str}.reset_index()"

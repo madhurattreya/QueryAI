@@ -68,7 +68,14 @@ def create_db_engine(db_type: str, sqlite_path: str = None, host: str = "localho
             port = port or "5432"
             connection_url = f"postgresql+psycopg2://{username}:{password}@{host}:{port}/{db_name}"
             flavor = "postgresql"
-        engine = create_engine(connection_url)
+        from backend.config import app_settings
+        pool_kwargs = {}
+        if db_type == "postgresql":
+            pool_kwargs = {
+                "pool_size": app_settings.postgres_pool_size,
+                "max_overflow": app_settings.postgres_max_overflow
+            }
+        engine = create_engine(connection_url, **pool_kwargs)
         # Test connection
         with engine.connect() as conn:
             pass

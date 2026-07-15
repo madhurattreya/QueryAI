@@ -6,12 +6,14 @@ import base64
 import json
 from fastapi import Request, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import backend.services.history_db as db
+import backend.config as config
+import os
 
-JWT_SECRET = b"queryiq_super_secret_enterprise_signing_key_998877"
-security_scheme = HTTPBearer()
+# Dynamic secret loaded from centralized app settings
+JWT_SECRET = config.app_settings.jwt_secret
+security_scheme = HTTPBearer(auto_error=False)
 
-# Password Hashing Utilities
+# Password Hashing Utilities (Production Bcrypt with Secure PBKDF2 Fallback)
 try:
     import bcrypt
     def hash_password(password: str) -> str:
@@ -20,13 +22,15 @@ try:
         return bcrypt.checkpw(password.encode(), hashed.encode())
 except ImportError:
     def hash_password(password: str) -> str:
-        salt = uuid.uuid4().hex
-        dk = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000)
+        # Secure random bytes salt to prevent predictability
+        salt = base64.b64encode(os.urandom(16)).decode()
+        # 600,000 iterations following OWASP recommendations
+        dk = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 600000)
         return f"{salt}${dk.hex()}"
     def verify_password(password: str, hashed: str) -> bool:
         try:
             salt, dk_hex = hashed.split("$")
-            dk = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000)
+            dk = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 600000)
             return hmac.compare_digest(dk.hex(), dk_hex)
         except Exception:
             return False
@@ -91,10 +95,18 @@ ROLE_PERMISSIONS = {
     }
 }
 
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security_scheme)) -> dict:
+def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme)) -> dict:
     """
     FastAPI dependency to verify authorization headers and return the token payload.
+    In development mode, returns a mock admin user if no token is provided.
     """
+    if not credentials or not credentials.credentials:
+        if config.app_settings.environment.lower() != "production":
+            return {"user_id": "dev_id", "username": "dev_user", "role": "Super Admin"}
+        raise HTTPException(
+            status_code=401,
+            detail="Access Denied: Authorization token is missing."
+        )
     return decode_jwt(credentials.credentials)
 
 def check_permission(user_role: str, permission: str) -> bool:

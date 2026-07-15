@@ -99,6 +99,23 @@ def build_prompt(template_name: str, **kwargs) -> str:
     kwargs.setdefault("result_str", "")
     kwargs.setdefault("error_msg", "")
     kwargs.setdefault("failed_code", "")
+    kwargs.setdefault("explanation_level", "standard")
+    kwargs.setdefault("chart_png_path", "")
+    kwargs.setdefault("chart_html_path", "")
     
-    formatted_prompt = template.format(**kwargs)
+    try:
+        formatted_prompt = template.format(**kwargs)
+    except KeyError as e:
+        # Graceful fallback: return the raw template with what we have so the
+        # LLM still receives the question and schema instead of crashing.
+        import logging
+        logging.getLogger(__name__).warning(
+            "Prompt template '%s' has unresolved placeholder %s — sending raw template.",
+            template_name, e
+        )
+        # Replace only the keys we DO have, leave unknown ones as-is
+        formatted_prompt = template
+        for k, v in kwargs.items():
+            formatted_prompt = formatted_prompt.replace("{{" + k + "}}", str(v))
+            formatted_prompt = formatted_prompt.replace("{" + k + "}", str(v))
     return system_ctx + formatted_prompt

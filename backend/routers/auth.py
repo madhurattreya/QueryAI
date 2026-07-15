@@ -138,8 +138,11 @@ def refresh(payload: TokenRefreshRequest):
     return {"status": "success", "access_token": new_access_token, "token_type": "bearer"}
 
 
+from backend.services.security_manager import verify_token
+
 @router.post("/logout")
-def logout(username: str):
+def logout(current_user: dict = Depends(verify_token)):
+    username = current_user.get("username")
     conn = db.get_db_connection()
     cursor = conn.cursor()
     cursor.execute("UPDATE users SET refresh_token = NULL WHERE username = ?", (username,))

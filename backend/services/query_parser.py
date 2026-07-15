@@ -178,6 +178,11 @@ def merge_conversational_context(current_plan: dict, prev_plan: dict, question: 
     if not prev_plan:
         return current_plan
         
+    # 0.5. Explicit reset context keywords (e.g. "in this data", "overall", "in the dataset")
+    reset_context_words = ["in this data", "in this dataset", "overall", "in the dataset", "in the data", "all data", "full dataset", "entire dataset", "entire data", "all records", "whole data", "complete data"]
+    if any(w in q_lower for w in reset_context_words):
+        return current_plan
+        
     # Check for follow-up indicator keywords
     followup_words = ["only", "except", "exclude", "compare", "trend", "monthly", "quarterly", "second", "third", "next", "what about", "and", "then", "now show", "instead", "same for", "drill", "top", "bottom", "limit"]
     is_followup = any(w in q_lower for w in followup_words) or (len(current_plan.get("filters", [])) == 0 and len(current_plan.get("groupby", [])) == 0 and current_plan.get("intent") in ["lookup", "filter"])
@@ -592,6 +597,9 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
             vals = get_categorical_values(active_df_name, active_df, col)
             if vals:
                 for val in vals:
+                    # Skip completely non-alphanumeric values (like "-", "?", " ") to avoid false positives on hyphenated queries
+                    if not any(c.isalnum() for c in val):
+                        continue
                     if re.search(r'\b' + re.escape(val) + r'\b', q_rewritten):
                         matched_categorical[col] = val
                         

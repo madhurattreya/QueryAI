@@ -1,31 +1,58 @@
+"""
+backend/services/logger.py
+──────────────────────────
+Structured telemetry and application logging with:
+  - Severity log levels (INFO, WARNING, ERROR)
+  - Correlation tracking via Request IDs
+  - Structured LLM metrics logging
+"""
 import os
 import json
 from datetime import datetime
+from typing import Any, Dict, Optional
 from backend.services.loader import DATA_DIR
 
 LOG_FILE = os.path.join(DATA_DIR, "studio_logs.jsonl")
 
-def log_telemetry(metrics: dict):
+
+def log_telemetry(metrics: dict, level: str = "INFO", request_id: Optional[str] = None):
     """
     Appends a structured JSON log entry to the studio telemetry logs.
+    Includes severity level and correlation request ID.
     """
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     
-    # Merge with timestamp
+    # Merge with meta
     log_entry = {
         "timestamp": datetime.now().isoformat(),
+        "level": level.upper(),
+        "request_id": request_id or "system",
         **metrics
     }
     
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             f.write(json.dumps(log_entry) + "\n")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[LOGGER ERROR] Failed to write telemetry log: {e}")
+
+
+def log_info(message: str, request_id: Optional[str] = None, **kwargs):
+    log_telemetry({"message": message, **kwargs}, level="INFO", request_id=request_id)
+
+
+def log_warn(message: str, request_id: Optional[str] = None, **kwargs):
+    log_telemetry({"message": message, **kwargs}, level="WARNING", request_id=request_id)
+
+
+def log_error(message: str, request_id: Optional[str] = None, **kwargs):
+    log_telemetry({"message": message, **kwargs}, level="ERROR", request_id=request_id)
+
 
 def get_telemetry_stats() -> dict:
     """
-    Reads the telemetry logs and returns aggregated statistics for the observability dashboard.
+    Reads telemetry logs and returns aggregated statistics for the observability dashboard.
+    Gracefully handles missing keys and new structured schemas.
     """
     if not os.path.exists(LOG_FILE):
         return {
@@ -55,36 +82,43 @@ def get_telemetry_stats() -> dict:
             for line in f:
                 if not line.strip():
                     continue
-                data = json.loads(line)
-                total_queries += 1
-                total_time += data.get("execution_time", 0.0)
-                
-                # LLM Latency
-                llm_lat = data.get("timings", {}).get("llm_total_latency", 0.0)
-                total_llm_time += llm_lat
-                
-                # Exec Latency
-                exec_lat = data.get("timings", {}).get("sql_pandas_execution", 0.0)
-                total_exec_time += exec_lat
-                
-                # Cache
-                if data.get("cache_hit", False):
-                    cache_hits += 1
+                try:
+                    data = json.loads(line)
+                    # Skip internal message-only logs that are not query events
+                    if "message" in data and "engine_used" not in data:
+                        continue
+
+                    total_queries += 1
+                    total_time += data.get("execution_time", 0.0)
                     
-                # Failures
-                if data.get("status") == "error" or data.get("error") is not None:
-                    failed_queries += 1
+                    # LLM Latency
+                    llm_lat = data.get("timings", {}).get("llm_total_latency", 0.0)
+                    total_llm_time += llm_lat
                     
-                # Auto retry
-                if data.get("auto_retry_count", 0) > 0:
-                    auto_retries += data.get("auto_retry_count")
+                    # Exec Latency
+                    exec_lat = data.get("timings", {}).get("sql_pandas_execution", 0.0)
+                    total_exec_time += exec_lat
                     
-                # Tokens
-                total_prompt_tokens += data.get("prompt_size", 0)
-                
-                # Engine
-                eng = data.get("engine_used", "unknown")
-                engine_counts[eng] = engine_counts.get(eng, 0) + 1
+                    # Cache
+                    if data.get("cache_hit", False):
+                        cache_hits += 1
+                        
+                    # Failures
+                    if data.get("status") == "error" or data.get("level") == "ERROR" or data.get("error") is not None:
+                        failed_queries += 1
+                        
+                    # Auto retry
+                    if data.get("auto_retry_count", 0) > 0:
+                        auto_retries += data.get("auto_retry_count")
+                        
+                    # Tokens
+                    total_prompt_tokens += data.get("prompt_size", 0)
+                    
+                    # Engine
+                    eng = data.get("engine_used", "unknown")
+                    engine_counts[eng] = engine_counts.get(eng, 0) + 1
+                except Exception:
+                    pass
     except Exception:
         pass
         

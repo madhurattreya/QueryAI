@@ -22,6 +22,10 @@ from backend.routers.collaboration import router as collaboration_router
 from backend.routers.search import router as search_router
 from backend.routers.health import router as health_router
 from backend.routers.export import router as export_router
+from backend.routers.auth import router as auth_router
+from backend.routers.workspace import router as workspace_router
+from backend.routers.api_mgmt import router as api_mgmt_router
+from backend.routers.observability import router as observability_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -37,8 +41,8 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
     try:
-        from backend.services.alert_engine import AlertEngine
-        AlertEngine().start_monitoring()
+        from backend.services.alert_engine import AlertEngineService
+        AlertEngineService().start_alerts_engine()
     except Exception:
         pass
     yield
@@ -81,6 +85,10 @@ app.include_router(collaboration_router)
 app.include_router(search_router)
 app.include_router(health_router)
 app.include_router(export_router)
+app.include_router(auth_router)
+app.include_router(workspace_router)
+app.include_router(api_mgmt_router)
+app.include_router(observability_router)
 
 @app.get("/")
 def read_root():

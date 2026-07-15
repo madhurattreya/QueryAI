@@ -215,6 +215,93 @@ def init_db():
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+
+    # 14. Create users table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        username TEXT UNIQUE,
+        email TEXT UNIQUE,
+        password_hash TEXT,
+        role TEXT,
+        is_verified INTEGER DEFAULT 0,
+        reset_token TEXT,
+        refresh_token TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # 15. Create workspaces table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS workspaces (
+        id TEXT PRIMARY KEY,
+        name TEXT UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # 16. Create workspace_members table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS workspace_members (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT,
+        user_id TEXT,
+        role TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # 17. Create dashboard_versions table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS dashboard_versions (
+        id TEXT PRIMARY KEY,
+        dashboard_id TEXT,
+        version_number INTEGER,
+        author TEXT,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        change_description TEXT,
+        status TEXT DEFAULT 'Draft',
+        layout TEXT
+    )
+    """)
+
+    # 18. Create scheduler_history table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS scheduler_history (
+        id TEXT PRIMARY KEY,
+        job_id TEXT,
+        report_name TEXT,
+        status TEXT,
+        started_at TIMESTAMP,
+        completed_at TIMESTAMP,
+        duration REAL,
+        error_message TEXT,
+        retry_count INTEGER DEFAULT 0
+    )
+    """)
+
+    # 19. Create notifications table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS notifications (
+        id TEXT PRIMARY KEY,
+        username TEXT,
+        message TEXT,
+        is_read INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # 20. Create api_keys table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS api_keys (
+        id TEXT PRIMARY KEY,
+        key_hash TEXT UNIQUE,
+        username TEXT,
+        permissions TEXT,
+        workspace_id TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
     
     # Migrations for datasets table
     for col, col_type in [
@@ -232,7 +319,8 @@ def init_db():
         ("avg_query_time", "REAL DEFAULT 0.0"),
         ("cache_hit_rate", "REAL DEFAULT 0.0"),
         ("charts_generated", "INTEGER DEFAULT 0"),
-        ("date_columns", "TEXT")
+        ("date_columns", "TEXT"),
+        ("workspace_id", "TEXT")
     ]:
         add_col("datasets", col, col_type)
         
@@ -243,6 +331,10 @@ def init_db():
         ("debug_info", "TEXT")
     ]:
         add_col("messages", col, col_type)
+
+    # Migrations for other tables
+    add_col("dashboards", "workspace_id", "TEXT")
+    add_col("conversations", "workspace_id", "TEXT")
             
     conn.commit()
     conn.close()
@@ -265,13 +357,13 @@ def get_or_create_dataset(name: str, type_str: str = "CSV/Excel", source: str = 
     return ds_id
 
 # Conversations CRUD
-def create_conversation(title: str, dataset_id: str = None) -> str:
+def create_conversation(title: str, dataset_id: str = None, workspace_id: str = None) -> str:
     conv_id = str(uuid.uuid4())
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO conversations (id, title, dataset_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-        (conv_id, title, dataset_id, datetime.now(), datetime.now())
+        "INSERT INTO conversations (id, title, dataset_id, workspace_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (conv_id, title, dataset_id, workspace_id, datetime.now(), datetime.now())
     )
     conn.commit()
     conn.close()
@@ -299,10 +391,13 @@ def delete_conversation(conv_id: str):
     conn.commit()
     conn.close()
 
-def list_conversations():
+def list_conversations(workspace_id: str = None):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM conversations ORDER BY updated_at DESC")
+    if workspace_id:
+        cursor.execute("SELECT * FROM conversations WHERE workspace_id = ? ORDER BY updated_at DESC", (workspace_id,))
+    else:
+        cursor.execute("SELECT * FROM conversations ORDER BY updated_at DESC")
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]

@@ -1,6 +1,6 @@
 import os
 import tempfile
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Request
 from backend.services.dataset_manager import DatasetManager
 
 router = APIRouter(prefix="/api")
@@ -15,6 +15,7 @@ ALLOWED_MIME_TYPES = {
 
 @router.post("/upload")
 async def upload_file(
+    request: Request,
     file: UploadFile = File(...),
     behavior: str = Query("keep", enum=["keep", "replace"])
 ):
@@ -53,6 +54,16 @@ async def upload_file(
             behavior=behavior
         )
         
+        workspace_id = request.headers.get("x-workspace-id")
+        if workspace_id and reg_result.get("status") == "success":
+            import backend.services.history_db as db
+            ds_id = reg_result.get("id")
+            conn = db.get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE datasets SET workspace_id = ? WHERE id = ?", (workspace_id, ds_id))
+            conn.commit()
+            conn.close()
+
         return reg_result
     except Exception as e:
         if isinstance(e, HTTPException):

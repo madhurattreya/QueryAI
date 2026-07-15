@@ -141,17 +141,51 @@ COMMON_TYPO_MAP = {
     "joiningyear": "JoinDate"
 }
 
+def _normalize_col(name: str) -> str:
+    """Normalize column name by lowercasing and collapsing spaces/underscores."""
+    return re.sub(r'[\s_]+', '', name).lower()
+
+
 def fuzzy_find_columns(target: str, available_cols: list) -> str | None:
     """
     Finds a matching column from available columns using fuzzy string matching.
+    Handles spaces vs underscores (e.g. 'OPERATING SYSTEM' == 'Operating_System').
     """
-    # Try case-insensitive exact match first
+    # 1. Case-insensitive exact match
     for col in available_cols:
         if col.lower() == target.lower():
             return col
-            
-    matches = difflib.get_close_matches(target, available_cols, n=1, cutoff=0.6)
-    return matches[0] if matches else None
+
+    # 2. Normalized match: collapse spaces/underscores and lowercase both sides
+    target_norm = _normalize_col(target)
+    for col in available_cols:
+        if _normalize_col(col) == target_norm:
+            return col
+
+    # 3. difflib fuzzy match on normalized names
+    norm_map = {_normalize_col(col): col for col in available_cols}
+    matches = difflib.get_close_matches(target_norm, list(norm_map.keys()), n=1, cutoff=0.55)
+    if matches:
+        return norm_map[matches[0]]
+
+    return None
+
+
+def build_safe_column_aliases(df: "pd.DataFrame") -> dict:
+    """
+    For every column that contains spaces, create an alias key using underscores
+    (e.g. 'OPERATING SYSTEM' -> 'OPERATING_SYSTEM') so LLM-generated code that
+    uses either form will work without error.
+    Returns a dict of extra {alias: df[original_col]} entries to inject into locals.
+    """
+    aliases = {}
+    for col in df.columns:
+        safe = col.replace(' ', '_')
+        if safe != col:
+            aliases[safe] = df[col]
+            aliases[safe.upper()] = df[col]
+            aliases[safe.lower()] = df[col]
+    return aliases
 
 def attempt_fast_correction(code: str, error: Exception, available_cols: list) -> str | None:
     """
@@ -167,21 +201,22 @@ def attempt_fast_correction(code: str, error: Exception, available_cols: list) -
         # Check KeyError pattern in message
         key_err_match = re.search(r"KeyError:\s*['\"]([^'\"]+)['\"]", error_msg, re.IGNORECASE)
         attr_match = re.search(r"object has no attribute ['\"]([^'\"]+)['\"]", error_msg, re.IGNORECASE)
-        col_match = re.search(r"no such column: (?:[a-zA-Z0-9_]+\.)?([a-zA-Z0-9_]+)", error_msg, re.IGNORECASE)
-        
+        # "no such column" can include spaces, so capture broader pattern
+        col_match = re.search(r"no such column:\s*(?:[a-zA-Z0-9_]+\.)?([a-zA-Z0-9_ ]+)", error_msg, re.IGNORECASE)
+
         if key_err_match:
             missing_col = key_err_match.group(1)
         elif attr_match:
             missing_col = attr_match.group(1)
         elif col_match:
-            missing_col = col_match.group(1)
-            
+            missing_col = col_match.group(1).strip()
+
     if not missing_col:
         return None
-        
+
     # Remove surrounding quotes if any
     missing_col = missing_col.strip("'\"")
-    
+
     # 2. Check hardcoded typos
     closest = None
     clean_missing = missing_col.lower()
@@ -191,15 +226,23 @@ def attempt_fast_correction(code: str, error: Exception, available_cols: list) -
             if col.lower() == mapped_target.lower():
                 closest = col
                 break
-                
-    # 3. Fallback to fuzzy match
+
+    # 3. Fallback to fuzzy match (handles spaces vs underscores)
     if not closest:
         closest = fuzzy_find_columns(missing_col, available_cols)
-        
+
     if closest:
         print(f"[SELF-HEALING FAST PATH] Correcting '{missing_col}' -> '{closest}' in code.")
-        # Replace occurrences of missing_col (either as a string key or identifier)
-        corrected_code = re.sub(rf"\b{re.escape(missing_col)}\b", closest, code)
+
+        # Replace both bracket-access forms:  df["Operating_System"] -> df["OPERATING SYSTEM"]
+        # and bare identifier forms:          Operating_System       -> OPERATING_SYSTEM (via alias)
+        corrected_code = re.sub(
+            rf'(["\']){re.escape(missing_col)}\1',
+            lambda m: f'{m.group(1)}{closest}{m.group(1)}',
+            code
+        )
+        # Also replace bare identifier occurrences
+        corrected_code = re.sub(rf'\b{re.escape(missing_col)}\b', closest, corrected_code)
         return corrected_code
-        
+
     return None

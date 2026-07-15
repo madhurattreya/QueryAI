@@ -15,14 +15,20 @@ class RenameRequest(BaseModel):
     id: str
     name: str
 
+from fastapi import Request
+
 @router.get("/datasets")
-def list_datasets_endpoint():
+def list_datasets_endpoint(request: Request):
     """
     Returns metadata and stats of all registered datasets.
     """
+    workspace_id = request.headers.get("x-workspace-id")
     conn = db.get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM datasets ORDER BY upload_time DESC")
+    if workspace_id:
+        cursor.execute("SELECT * FROM datasets WHERE workspace_id = ? ORDER BY upload_time DESC", (workspace_id,))
+    else:
+        cursor.execute("SELECT * FROM datasets ORDER BY upload_time DESC")
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]

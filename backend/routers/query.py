@@ -350,12 +350,12 @@ def compile_badges_and_explanation(total_start: float, dataset_name: str, engine
     return confidence_badge, query_explanation
 
 
-def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
+def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks, workspace_id: str = None):
     """
     S synchronous stream generator executing queries with SSE progress states.
     """
     total_start = time.time()
-    print(f"[API QUERY] Request received: question='{req.question}', conversation_id={req.conversation_id}")
+    print(f"[API QUERY] Request received: question='{req.question}', conversation_id={req.conversation_id}, workspace_id={workspace_id}")
     
     # Time measurements dict
     timings = {
@@ -382,7 +382,7 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
     # Load Conversation details
     t_start = time.time()
     if not conversation_id or not db.get_conversation(conversation_id):
-        conversation_id = db.create_conversation(title=question[:50])
+        conversation_id = db.create_conversation(title=question[:50], workspace_id=workspace_id)
     
     conv_details = db.get_conversation(conversation_id)
     timings["Routing"] += time.time() - t_start
@@ -1287,7 +1287,11 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
                 local_vars = {name: df_item for name, df_item in config.datasets.items()}
                 if config.datasets:
                     active_name = list(config.datasets.keys())[0]
-                    local_vars["df"] = config.datasets[active_name]
+                    active_df = config.datasets[active_name]
+                    local_vars["df"] = active_df
+                    # Inject underscore-aliased columns so LLM code using
+                    # "OPERATING_SYSTEM" works even if real col is "OPERATING SYSTEM"
+                    local_vars.update(engine.build_safe_column_aliases(active_df))
                 local_vars["result"] = None
                 local_vars["pd"] = pd
                 if engine.HAS_PLOTLY:
@@ -1609,18 +1613,22 @@ def execute_query_stream(req: QueryRequest, background_tasks: BackgroundTasks):
     yield json.dumps(final_payload) + "\n"
 
 @router.post("/query")
-def run_query(req: QueryRequest, background_tasks: BackgroundTasks):
+def run_query(req: QueryRequest, background_tasks: BackgroundTasks, request: Request):
     """
     POST route returning a StreamingResponse that sends SSE chunks of progress updates and final query results.
     """
+    workspace_id = request.headers.get("x-workspace-id")
     return StreamingResponse(
-        execute_query_stream(req, background_tasks),
+        execute_query_stream(req, background_tasks, workspace_id),
         media_type="text/event-stream"
     )
 
+from fastapi import Request
+
 @router.get("/conversations")
-def get_conversations():
-    return db.list_conversations()
+def get_conversations(request: Request):
+    workspace_id = request.headers.get("x-workspace-id")
+    return db.list_conversations(workspace_id)
 
 @router.get("/conversations/search")
 def search_conversations(q: str):

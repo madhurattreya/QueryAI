@@ -108,16 +108,43 @@ class AppSettings:
     def jwt_secret(self) -> bytes:
         val = os.environ.get("JWT_SECRET")
         if not val:
-            # Fallback for development
-            val = "queryiq_super_secret_enterprise_signing_key_998877"
+            if self.environment.lower() == "production":
+                raise RuntimeError(
+                    "FATAL: JWT_SECRET is not set. "
+                    "Generate one with: python -c \"import secrets; print(secrets.token_hex(64))\""
+                )
+            # Development-only fallback — NEVER use in production
+            import warnings
+            warnings.warn(
+                "[SECURITY] JWT_SECRET not set — using insecure development default. "
+                "Set JWT_SECRET in your .env file.",
+                stacklevel=2,
+            )
+            val = "dev-only-jwt-secret-change-me-before-production"
         return val.encode()
 
     @property
     def jwt_refresh_secret(self) -> bytes:
         val = os.environ.get("JWT_REFRESH_SECRET")
         if not val:
-            val = "queryiq_super_secret_refresh_signing_key_778899"
+            if self.environment.lower() == "production":
+                raise RuntimeError(
+                    "FATAL: JWT_REFRESH_SECRET is not set. "
+                    "Generate one with: python -c \"import secrets; print(secrets.token_hex(64))\""
+                )
+            val = "dev-only-refresh-secret-change-me-before-production"
         return val.encode()
+
+    @property
+    def fernet_key(self) -> Optional[str]:
+        """Encryption key for database credentials. Mandatory in production."""
+        val = os.environ.get("FERNET_KEY")
+        if not val and self.environment.lower() == "production":
+            raise RuntimeError(
+                "FATAL: FERNET_KEY is not set. "
+                "Generate one with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+            )
+        return val
 
     @property
     def database_url(self) -> str:
@@ -227,6 +254,12 @@ settings: Dict[str, Any] = {
 GEMINI_API_KEY: Optional[str] = app_settings.gemini_api_key
 
 # ─── Production Startup Validator ───────────────────────────────────────────
+# Secrets are validated lazily on first property access (see AppSettings above).
+# This block is kept as an early-fail guard for fast feedback at import time.
 if app_settings.environment.lower() == "production":
-    if not os.environ.get("JWT_SECRET"):
-        raise RuntimeError("FATAL: JWT_SECRET environment variable is missing, but ENVIRONMENT is set to production!")
+    _missing = [v for v in ["JWT_SECRET", "JWT_REFRESH_SECRET", "DATABASE_URL"] if not os.environ.get(v)]
+    if _missing:
+        raise RuntimeError(
+            f"FATAL: Required production environment variables are missing: {_missing}\n"
+            "Please set them in your environment or a secure secrets manager."
+        )

@@ -18,6 +18,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 import backend.config as config
 from backend.services.loader import load_default_datasets
@@ -91,12 +94,24 @@ async def lifespan(app: FastAPI):
 
 # ─── App factory ──────────────────────────────────────────────────────────────
 
+# Global rate limiter instance (keyed by client IP)
+_limiter = Limiter(key_func=get_remote_address)
+
+is_prod = config.app_settings.environment.lower() == "production"
+
 app = FastAPI(
     title="QueryIQ Enterprise AI Data Analytics Platform",
     version=config.app_settings.app_version,
     description="Natural-language analytics over your data.",
+    docs_url=None if is_prod else "/docs",
+    redoc_url=None if is_prod else "/redoc",
+    openapi_url=None if is_prod else "/openapi.json",
     lifespan=lifespan,
 )
+
+# Register rate limiter state and 429 handler
+app.state.limiter = _limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 # ─── Middleware: Request ID ────────────────────────────────────────────────────
@@ -124,16 +139,24 @@ async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     # HSTS: 1 Year protection
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    # Anti Clickjacking
-    response.headers["X-Frame-Options"] = "DENY"
-    # XSS Protection
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    # MIME Sniffing protection
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    # Referrer policy
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    # Content Security Policy (Enterprise constraints)
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+    
+    # Allow iframe rendering for chart endpoints (/api/chart/html and /chart/html)
+    path = request.url.path
+    if "/chart/" in path or path.startswith("/api/chart"):
+        if "X-Frame-Options" in response.headers:
+            del response.headers["X-Frame-Options"]
+        response.headers["Content-Security-Policy"] = "default-src 'self' 'unsafe-inline' https: cdn.plot.ly; script-src 'self' 'unsafe-inline' https: cdn.plot.ly; style-src 'self' 'unsafe-inline' https:;"
+    else:
+        # Anti Clickjacking for standard API endpoints
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        # XSS Protection
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        # MIME Sniffing protection
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        # Referrer policy
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        # Content Security Policy
+        response.headers["Content-Security-Policy"] = "default-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' https: cdn.plot.ly; style-src 'self' 'unsafe-inline' https:;"
     return response
 
 
@@ -171,27 +194,36 @@ async def add_observability_logging(request: Request, call_next):
 # ─── Middleware: CORS ─────────────────────────────────────────────────────────
 
 _frontend_url = config.app_settings.frontend_url
-allowed_origins = [
-    _frontend_url,
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
-# Deduplicate
-allowed_origins = list(dict.fromkeys(allowed_origins))
+_is_production = config.app_settings.environment.lower() == "production"
+
+# In production, only allow the configured FRONTEND_URL.
+# In development, also allow localhost origins for convenience.
+if _is_production:
+    allowed_origins = [_frontend_url]
+else:
+    allowed_origins = list(dict.fromkeys([
+        _frontend_url,
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 
 # ─── Middleware: Trusted Host ────────────────────────────────────────────────
+# Production: Set ALLOWED_HOSTS env var to your domain (e.g. "example.com,www.example.com")
+# Development: Defaults to localhost only.
+_allowed_hosts_default = "localhost,127.0.0.1,*.localhost" if not _is_production else "*"
+_allowed_hosts = os.environ.get("ALLOWED_HOSTS", _allowed_hosts_default).split(",")
 
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,*.localhost").split(",")
+    allowed_hosts=_allowed_hosts,
 )
 
 
@@ -226,15 +258,18 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code = 500
         user_message = "An unexpected server error occurred. Please try again."
 
-    return JSONResponse(
-        status_code=status_code,
-        content={
-            "error_code": error_code,
-            "message": user_message,
-            "detail": error_detail,
-            "request_id": request_id,
-        },
-    )
+    # In production, suppress internal error details to avoid leaking stack traces.
+    # In development, expose the full detail for easier debugging.
+    is_prod = config.app_settings.environment.lower() == "production"
+    response_content = {
+        "error_code": error_code,
+        "message": user_message,
+        "request_id": request_id,
+    }
+    if not is_prod:
+        response_content["detail"] = error_detail
+
+    return JSONResponse(status_code=status_code, content=response_content)
 
 
 # ─── Routers ──────────────────────────────────────────────────────────────────

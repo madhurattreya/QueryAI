@@ -67,125 +67,108 @@ def get_active_dataset_details() -> Tuple[str, str, str]:
     return active_name, active_hash, ds_id
 
 
-def generate_smart_suggestions(question: str, parsed_query) -> List[str]:
+def generate_smart_suggestions(question: str, parsed_query=None) -> List[str]:
     suggestions = []
-    if not parsed_query:
-        return [
-            "Show distribution of values",
-            "What are the top categories?",
-            "Export this summary to CSV"
-        ]
-        
-    intent = getattr(parsed_query, "intent", "general")
-    filters = getattr(parsed_query, "filters", [])
-    aggregations = getattr(parsed_query, "aggregations", [])
-    groupby = getattr(parsed_query, "groupby", [])
-    
-    measure = aggregations[0]["column"] if aggregations else "result"
+    cat_cols = []
+    num_cols = []
+    date_cols = []
+
+    if config.datasets:
+        df_name = list(config.datasets.keys())[0]
+        df = config.datasets[df_name]
+        for col in df.columns:
+            if pd.api.types.is_numeric_dtype(df[col]):
+                num_cols.append(col)
+            elif pd.api.types.is_datetime64_any_dtype(df[col]) or "date" in col.lower():
+                date_cols.append(col)
+            else:
+                cat_cols.append(col)
+
+    groupby = getattr(parsed_query, "groupby", []) if parsed_query else []
+    aggregations = getattr(parsed_query, "aggregations", []) if parsed_query else []
+    measure = aggregations[0]["column"] if aggregations else (num_cols[0] if num_cols else "total")
+
     if groupby:
-        groupby_col = groupby[0]
-        suggestions.append(f"Show top 10 {groupby_col} by {measure}")
-        suggestions.append(f"Compare {measure} across all {groupby_col}")
-    
-    if any(k in question.lower() for k in ["sales", "revenue", "profit", "amount", "count"]):
-        suggestions.append(f"Compare {measure} with last year")
+        gb_col = groupby[0]
+        suggestions.append(f"Show top 5 {gb_col} by {measure}")
+        if len(num_cols) > 1:
+            other_num = [c for c in num_cols if c.lower() != measure.lower()]
+            if other_num:
+                suggestions.append(f"Compare {other_num[0]} across all {gb_col}")
+
+    if cat_cols:
+        suggestions.append(f"Show breakdown by {cat_cols[0]}")
+        if len(cat_cols) > 1:
+            suggestions.append(f"What are the top categories in {cat_cols[1]}?")
+
+    if num_cols:
+        suggestions.append(f"What is the average {num_cols[0]}?")
+        if len(num_cols) > 1:
+            suggestions.append(f"Show sum of {num_cols[1]}")
+
+    if date_cols:
         suggestions.append(f"Show monthly trend of {measure}")
-        suggestions.append(f"Show contribution percentage of {measure}")
-        
-    if any(k in question.lower() for k in ["city", "state", "region", "country"]):
-        suggestions.append(f"Show map of {measure} by location")
-        
+
+    # Fallback to schema-based options if still under 3
     if len(suggestions) < 3:
-        suggestions.extend([
-            "Show distribution of values",
-            "What are the top categories?",
-            "Export this summary to CSV"
-        ])
-        
-    return list(set(suggestions))[:4]
+        if cat_cols and num_cols:
+            suggestions.append(f"Show total {num_cols[0]} by {cat_cols[0]}")
+        if num_cols:
+            suggestions.append(f"Show maximum and minimum {num_cols[0]}")
+        suggestions.append("Show overall summary of dataset")
+
+    # Remove duplicates and match user query
+    seen = set()
+    cleaned = []
+    q_clean = question.lower().strip()
+    for s in suggestions:
+        s_clean = s.strip()
+        if s_clean.lower() not in seen and s_clean.lower() != q_clean:
+            seen.add(s_clean.lower())
+            cleaned.append(s_clean)
+
+    return cleaned[:4]
 
 
 def generate_local_explanation(question: str, result, parsed_query) -> Optional[str]:
-    val = None
-    if isinstance(result, (int, float, str, bool)):
-        val = result
-    elif isinstance(result, pd.DataFrame):
+    if isinstance(result, pd.DataFrame):
         if result.empty:
-            return (
-                "### Executive Summary\n"
-                "The analysis returned no matching records.\n\n"
-                "### Business Meaning\n"
-                "No data meets the current filter criteria.\n\n"
-                "### Why This Happened\n"
-                "This occurs when filter constraints are too narrow or there are no transactions matching the parameters.\n\n"
-                "### Key Drivers\n"
-                f"No records matched filters: {parsed_query.filters}.\n\n"
-                "### Potential Risks\n"
-                "Ensure that data ingestion is active and the selected filters match actual category values.\n\n"
-                "### Recommendations\n"
-                "Try relaxing some filters or broaden your query to verify overall data presence.\n\n"
-                "### Suggested Next Questions\n"
-                "1. Show all records without filters\n"
-                "2. Check total row count in dataset\n"
-                "3. Reset filters"
-            )
-        elif result.shape == (1, 1):
-            val = result.iloc[0, 0]
-        elif result.shape[0] == 1:
-            row_dict = result.iloc[0].to_dict()
-            desc = ", ".join([f"**{k}**: {v}" for k, v in row_dict.items() if pd.notnull(v)])
-            return (
-                f"### Executive Summary\n"
-                f"The analysis found 1 matching record.\n\n"
-                f"### Business Meaning\n"
-                f"Here is the detailed result:\n{desc}\n\n"
-                f"### Why This Happened\n"
-                f"A single record matched the requested parameters.\n\n"
-                f"### Key Drivers\n"
-                f"Specific criteria matched: {parsed_query.filters}.\n\n"
-                f"### Potential Risks\n"
-                f"Relying on a single entry might not be statistically representative of overall trends.\n\n"
-                f"### Recommendations\n"
-                f"Examine related records or check other entries in this category for a broader context.\n\n"
-                f"### Suggested Next Questions\n"
-                f"1. Show similar records\n"
-                f"2. Summarize overall category totals\n"
-                f"3. Clear filters and show all"
-            )
-    elif isinstance(result, pd.Series):
-        if result.empty:
-            return None
-        elif len(result) == 1:
-            val = result.iloc[0]
-            
-    if val is None:
-        return None
+            filters_info = f": {parsed_query.filters}" if parsed_query and getattr(parsed_query, "filters", None) else "."
+            return f"The analysis returned 0 matching records for your filter criteria{filters_info}"
 
-    if isinstance(val, (int, float)):
-        val_str = f"{val:,.2f}" if isinstance(val, float) else f"{val:,}"
-    else:
-        val_str = str(val)
-        
-    measure_name = parsed_query.execution_plan.get("measure") or "result"
-    
-    return (
-        f"### Executive Summary\n"
-        f"The calculated {measure_name} is **{val_str}**.\n\n"
-        f"### Business Meaning\n"
-        f"Your analysis returned a direct value of {val_str} for {measure_name}.\n\n"
-        f"### Why This Happened\n"
-        f"This value was computed directly from the matching records in your active dataset.\n\n"
-        f"### Key Drivers\n"
-        f"The calculation is based on the active filters: {parsed_query.filters}.\n\n"
-        f"### Potential Risks\n"
-        f"Viewing a single aggregated metric can obscure underlying variations or outliers.\n\n"
-        f"### Recommendations\n"
-        f"We suggest breaking this metric down by Category or Region to see how it's distributed.\n\n"
-        f"### Suggested Next Questions\n"
-        f"1. Break down {measure_name} by Region\n"
-        f"2. Show monthly trend of {measure_name}\n"
-        f"3. What are the outliers for this metric?"
-    )
+        # Value count / unique breakdown result
+        if "COUNT" in result.columns or "count" in result.columns:
+            main_col = result.columns[0]
+            total_unique = len(result)
+            count_col = "COUNT" if "COUNT" in result.columns else "count"
+            top_vals = [f"**{row[main_col]}** ({row[count_col]:,})" for _, row in result.head(5).iterrows()]
+            top_str = ", ".join(top_vals)
+            return (
+                f"Found **{total_unique} unique values** for **{main_col}**.\n\n"
+                f"Top entries: {top_str}" + (f", and {total_unique - 5} more." if total_unique > 5 else ".")
+            )
+
+        if result.shape == (1, 1):
+            val = result.iloc[0, 0]
+            val_str = f"{val:,.2f}" if isinstance(val, float) else f"{val:,}" if isinstance(val, int) else str(val)
+            col_name = result.columns[0]
+            return f"The calculated **{col_name}** is **{val_str}**."
+
+        if result.shape[0] == 1:
+            row_dict = result.iloc[0].to_dict()
+            desc = ", ".join([f"**{k}**: {v:,.2f}" if isinstance(v, float) else f"**{k}**: {v:,}" if isinstance(v, int) else f"**{k}**: {v}" for k, v in row_dict.items() if pd.notnull(v)])
+            return f"Analysis returned 1 record:\n{desc}"
+
+        row_count = len(result)
+        cols_str = ", ".join([f"**{c}**" for c in result.columns[:4]])
+        return f"Found **{row_count:,} records** matching your query (columns: {cols_str})."
+
+    elif isinstance(result, (int, float, str, bool)):
+        val_str = f"{result:,.2f}" if isinstance(result, float) else f"{result:,}" if isinstance(result, int) else str(result)
+        measure_name = parsed_query.execution_plan.get("measure") if parsed_query and hasattr(parsed_query, "execution_plan") else "Result"
+        return f"The calculated **{measure_name}** is **{val_str}**."
+
+    return None
 
 
 def compile_badges_and_explanation(total_start: float, dataset_name: str, engine_type: str, llm_used: bool, parsed_query) -> Tuple[dict, dict]:
@@ -737,11 +720,11 @@ class QueryOrchestrator:
                     code = "# Precomputed KPI Dashboard Overview"
                     context.code = code
                     context.explanation = (
-                        f"Business Dashboard Overview for {dataset_name}:\n"
-                        f"- Total Revenue: {kpis['revenue']}\n"
-                        f"- Total Profit: {kpis['profit']} (Margin: {kpis['margin']}%)\n"
-                        f"- Total Orders: {kpis['orders']} from {kpis['customers']} customers\n"
-                        f"- Average Order Value: {kpis['aov']}"
+                        f"Business Dashboard Overview for **{dataset_name}**:\n"
+                        f"- **Total Revenue**: ${kpis.get('revenue', 0):,.2f}\n"
+                        f"- **Total Profit**: ${kpis.get('profit', 0):,.2f} (Margin: {kpis.get('margin', 0)}%)\n"
+                        f"- **Total Orders**: {kpis.get('orders', 0):,} from {kpis.get('customers', 0):,} customers\n"
+                        f"- **Average Order Value**: ${kpis.get('aov', 0):,.2f}"
                     )
                 else:
                     context.raw_result = pd.DataFrame()
@@ -885,6 +868,16 @@ class QueryOrchestrator:
             except Exception:
                 pass
 
+            from backend.services.schema_index import SchemaIndexRegistry
+            
+            res_col = parsed_query.aggregations[0]["column"] if (parsed_query and parsed_query.aggregations) else "None"
+            df_nm = df_name if 'df_name' in locals() else dataset_name
+            sem_tp = "Unknown"
+            if res_col != "None" and df_nm:
+                idx = SchemaIndexRegistry.get(df_nm)
+                if idx:
+                    sem_tp = idx.get_column_semantic_type(res_col)
+            
             debug_info = {
                 "timings": {k: round(v, 4) for k, v in timings.items()},
                 "complexity": complexity,
@@ -901,7 +894,7 @@ class QueryOrchestrator:
                 "question": question,
                 "parsed_intent": parsed_query.intent if parsed_query else "unknown",
                 "execution_plan": parsed_query.execution_plan if parsed_query else {},
-                "matched_dataset": df_name if 'df_name' in locals() else dataset_name,
+                "matched_dataset": df_nm,
                 "matched_columns": parsed_query.entities.get("matched_columns", []) if parsed_query else [],
                 "applied_pandas_code": code,
                 "rows_before": len(df) if ('df' in locals() and df is not None) else 0,
@@ -921,12 +914,22 @@ class QueryOrchestrator:
                 "recovery_steps": [],
                 "column_resolution_steps": [],
                 "confidence_score": parsed_query.confidence if parsed_query else 0.0,
+                
+                # New semantic telemetry fields
+                "detected_metric": parsed_query.entities.get("detected_metric", "Unknown") if parsed_query else "Unknown",
+                "resolved_column": res_col,
+                "semantic_type": str(sem_tp),
+                "confidence": parsed_query.confidence if parsed_query else 0.0,
+                "aggregation": parsed_query.aggregations[0]["operator"] if (parsed_query and parsed_query.aggregations) else "None",
+                "reason": (
+                    parsed_query.execution_plan.get("match_reason") or 
+                    (router_res.get("fallback_reason") if isinstance(router_res, dict) else None) or 
+                    ""
+                ) if parsed_query else "",
+                "fallback_used": router_res.get("fallback_used", False) if isinstance(router_res, dict) else False,
             }
             
             suggestions_list = generate_smart_suggestions(question, parsed_query)
-            if suggestions_list and "### Suggested Next Questions" not in context.explanation:
-                suggestions_markdown = "\n\n### Suggested Next Questions\n" + "\n".join([f"{i+1}. {s}" for i, s in enumerate(suggestions_list)])
-                context.explanation += suggestions_markdown
                 
             explanation_level = config.settings.get("explain_level", "Normal")
             if explanation_level == "Technical":
@@ -1356,9 +1359,6 @@ class QueryOrchestrator:
         }
         
         suggestions_list = generate_smart_suggestions(question, parsed_query)
-        if suggestions_list and "### Suggested Next Questions" not in context.explanation:
-            suggestions_markdown = "\n\n### Suggested Next Questions\n" + "\n".join([f"{i+1}. {s}" for i, s in enumerate(suggestions_list)])
-            context.explanation += suggestions_markdown
             
         if explanation_level == "Technical":
             technical_appendix = (

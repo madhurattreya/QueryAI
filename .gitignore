@@ -1,4 +1,71 @@
+# ─── QueryIQ — Root .gitignore ────────────────────────────────────────────────
+
+# ─── Environment & Secrets ────────────────────────────────────────────────────
 .env
+.env.local
+.env.production
+.env.development
+.env.*.local
+# Keep the example template (safe to commit)
+!.env.example
+!nexus-ai-studio/.env.example
+
+# ─── Python ───────────────────────────────────────────────────────────────────
 venv/
+.venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# ─── Data & Uploads ───────────────────────────────────────────────────────────
+data/
+scratch/
+*.db
+*.sqlite
+*.sqlite3
+fernet.key
+Sales Report.xlsx
+
+# ─── Node / Next.js ───────────────────────────────────────────────────────────
+nexus-ai-studio/node_modules/
+nexus-ai-studio/.next/
+nexus-ai-studio/out/
+nexus-ai-studio/.turbo/
+
+# ─── Docker ───────────────────────────────────────────────────────────────────
+# Don't ignore docker-compose — it's needed for deployment
+!docker-compose.yml
+
+# ─── IDE & OS ─────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Certs (never commit SSL certs) ──────────────────────────────────────────
+certs/
+*.pem
+*.key
+*.crt
+
+# ─── Downloaded/temp screens ─────────────────────────────────────────────────
+downloaded_screens/
+downloaded_screens_new/

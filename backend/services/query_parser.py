@@ -1,10 +1,13 @@
 import re
 import uuid
 import datetime
+import difflib
 import pandas as pd
 from dataclasses import dataclass, field
 import backend.config as config
 from backend.services.profiler import profile_dataset
+from backend.services.schema_index import SchemaIndexRegistry, SchemaIndex, SemanticType
+from backend.services.metric_catalog import MetricCatalog
 
 _categorical_values_cache = {}
 
@@ -35,18 +38,30 @@ COMMON_REWRITES = {
     r"\bcustmer\b": "customer",
     r"\bexperiance\b": "experience",
     r"\bemployeid\b": "employee id",
+    r"\bminmum\b": "minimum",
     r"\bwho\s+sold\s+best\b": "which salesperson generated the highest sales",
     r"\bprofit\s+dikhao\b": "show total profit",
     r"\bsabse\s+jyada\s+sale\s+kis\s+city\s+me\s+hui\b": "which city has the highest sales",
     r"\bdelhi\s+ka\s+profit\s+dikhao\b": "show profit in delhi",
     r"\bkitna\s+sale\s+hua\b": "show total sales",
+    r"\bkitne\s+aur\s+(?:konse|kaunse|kon-konse|konse-konse)(?:\s+(?:konse|kaunse))?\b": "how many and which unique",
+    r"\b(?:konse|kaunse|kon-konse|konse-konse)(?:\s+(?:konse|kaunse))?\b": "which unique",
+    r"\bkitne\s+types?\s+ke\b": "how many unique types of",
+    r"\bkitne\b": "how many",
+    r"\bkitna\b": "how much",
+    r"\bis\s+data\s+me\b": "",
+    r"\bdata\s+me\b": "",
+    r"\bisme\b": "",
+    r"\bhai\b": "",
+    r"\bhain\b": "",
+    r"\bhuye\b": "",
 }
 
 def rewrite_query(question: str) -> str:
     q = question.lower().strip()
     for pattern, replacement in COMMON_REWRITES.items():
         q = re.sub(pattern, replacement, q)
-    return q
+    return q.strip()
 
 def get_semantic_layer(df_name: str, df: pd.DataFrame) -> dict:
     """
@@ -357,6 +372,31 @@ def merge_conversational_context(current_plan: dict, prev_plan: dict, question: 
         
     return merged
 
+def validate_aggregation_compatibility(col: str, op: str, schema_index: Optional[SchemaIndex]) -> bool:
+    if not schema_index:
+        return True
+    
+    from backend.services.schema_index import SemanticType
+    sem_type = schema_index.get_column_semantic_type(col)
+    
+    math_ops = {"sum", "mean", "median", "std", "var", "quantile"}
+    count_ops = {"count", "nunique", "distinct"}
+    extreme_ops = {"min", "max"}
+    
+    if sem_type == SemanticType.IDENTIFIER:
+        if op in math_ops or op in extreme_ops:
+            return False
+            
+    elif sem_type == SemanticType.DIMENSION:
+        if op in math_ops or op in extreme_ops:
+            return False
+            
+    elif sem_type == SemanticType.DATE:
+        if op in math_ops:
+            return False
+            
+    return True
+
 def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name: str = "", prev_plan: dict = None, conversation_id: str = None) -> ParsedQuery:
     """
     Parses natural language question dynamically into ParsedQuery execution plan.
@@ -374,6 +414,11 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
     semantic_layer = {}
     cols_map = {}
     known_cols = []
+    
+    # Load schema index and metric catalog
+    schema_index = SchemaIndexRegistry.get(active_df_name)
+    catalog = MetricCatalog(schema_index) if schema_index else None
+    
     if active_df is not None:
         known_cols = active_df.columns.tolist()
         semantic_layer = get_semantic_layer(active_df_name, active_df)
@@ -391,11 +436,77 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
 
     q_clean = q_norm
 
-    # Helper to resolve columns semantically
+    # Relevance scoring function for a column against a query term or the general query
+    def compute_column_score(col_name: str, op: Optional[str] = None) -> float:
+        score = 0.0
+        col_lower = col_name.lower()
+        
+        syns = [col_lower]
+        if col_name in semantic_layer:
+            syns.extend([s.lower() for s in semantic_layer[col_name].get("synonyms", []) if isinstance(s, str)])
+            
+        sem_type = None
+        if schema_index:
+            sem_type = schema_index.get_column_semantic_type(col_name)
+            
+        matched = False
+        best_match_syn_len = 0
+        for syn in syns:
+            if re.search(r'\b' + re.escape(syn) + r'\b', q_rewritten) or re.search(r'\b' + re.escape(syn.replace(" ", "_")) + r'\b', q_rewritten):
+                matched = True
+                best_match_syn_len = max(best_match_syn_len, len(syn))
+                
+        if matched:
+            score += 50.0 + min(50.0, best_match_syn_len * 3.0)
+        else:
+            for syn in syns:
+                if syn in q_rewritten:
+                    score += 30.0
+                    matched = True
+                    break
+                    
+        if not matched:
+            words_in_q = re.findall(r"\b[a-z0-9_]+\b", q_rewritten)
+            for syn in syns:
+                syn_words = syn.split()
+                for w in words_in_q:
+                    for sw in syn_words:
+                        if len(sw) >= 3 and len(w) >= 3:
+                            ratio = difflib.SequenceMatcher(None, sw, w).ratio()
+                            if ratio >= 0.8:
+                                score += 30.0 + ratio * 10.0
+                                matched = True
+                                break
+                    if matched:
+                        break
+                if matched:
+                    break
+                    
+        # Semantic adjustments based on operator compatibility
+        # DO NOT penalize if the column name or synonym was explicitly matched as a full phrase in the query
+        is_explicit_match = False
+        for syn in syns:
+            if re.search(r'\b' + re.escape(syn) + r'\b', q_rewritten) or re.search(r'\b' + re.escape(syn.replace(" ", "_")) + r'\b', q_rewritten):
+                is_explicit_match = True
+                break
+                
+        if score > 0.0 and op:
+            math_ops = {"sum", "mean", "median", "std", "var", "quantile"}
+            count_ops = {"count", "nunique", "distinct"}
+            
+            if op in math_ops:
+                if sem_type == SemanticType.MEASURE:
+                    score += 30.0
+                elif sem_type in (SemanticType.IDENTIFIER, SemanticType.DIMENSION) and not is_explicit_match:
+                    score -= 50.0
+            elif op in count_ops:
+                if sem_type == SemanticType.IDENTIFIER:
+                    score += 30.0
+        return score
+
+    # Helper to resolve columns semantically using scoring fallback
     def resolve_column(name: str) -> str:
         name_clean = name.strip().lower()
-        
-        # Look in semantic layer first
         matched_col = None
         max_match_len = 0
         for col, entry in semantic_layer.items():
@@ -410,10 +521,27 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
             
         if name_clean in cols_map:
             return cols_map[name_clean]
-        # Try fuzzy match
-        for k, v in cols_map.items():
-            if name_clean in k or k in name_clean:
-                return v
+            
+        # Try scoring search
+        best_col = None
+        max_score = 0.0
+        for col in known_cols:
+            score = 0.0
+            col_lower = col.lower()
+            syns = [col_lower]
+            if col in semantic_layer:
+                syns.extend([s.lower() for s in semantic_layer[col].get("synonyms", []) if isinstance(s, str)])
+            for syn in syns:
+                if syn == name_clean:
+                    score += 100.0
+                elif name_clean in syn or syn in name_clean:
+                    score += 50.0
+            if score > max_score:
+                max_score = score
+                best_col = col
+        if max_score >= 50.0:
+            return best_col
+            
         return None
 
     # Intent heuristics
@@ -440,18 +568,31 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
     meta_keywords = {"how many tables", "show tables", "columns of", "describe table", "list tables", "schema", "dataset info"}
     has_meta = any(kw in q_rewritten for kw in meta_keywords)
 
-    # Match columns mentioned in question
-    matched_columns = []
+    # Match columns using relevance scoring
+    column_scores = {}
     for col_orig in known_cols:
-        col_lower = col_orig.lower()
-        syns = [col_lower]
-        if col_orig in semantic_layer:
-            syns.extend(semantic_layer[col_orig].get("synonyms", []))
+        score = compute_column_score(col_orig)
+        if score >= 30.0:
+            column_scores[col_orig] = score
             
-        for syn in syns:
-            if re.search(r'\b' + re.escape(syn) + r'\b', q_rewritten) or re.search(r'\b' + re.escape(syn.replace(" ", "_")) + r'\b', q_rewritten):
-                if col_orig not in matched_columns:
-                    matched_columns.append(col_orig)
+    # Sort matching columns by score descending
+    sorted_matched = sorted(column_scores.items(), key=lambda x: x[1], reverse=True)
+    matched_columns = [col for col, score in sorted_matched]
+
+    # Detect ambiguity in column matching (margin < 15 points between top 2 columns)
+    is_ambiguous = False
+    ambiguity_reason = ""
+    if len(sorted_matched) >= 2:
+        top_col, top_score = sorted_matched[0]
+        second_col, second_score = sorted_matched[1]
+        
+        if abs(top_score - second_score) < 15.0 and top_score > 40.0:
+            if not (top_col.lower() in q_rewritten and second_col.lower() in q_rewritten):
+                top_sem = schema_index.get_column_semantic_type(top_col) if schema_index else None
+                sec_sem = schema_index.get_column_semantic_type(second_col) if schema_index else None
+                if top_sem == sec_sem:
+                    is_ambiguous = True
+                    ambiguity_reason = f"Ambiguous query: matched both '{top_col}' and '{second_col}' (both classified as {top_sem.value if top_sem else 'unknown'}) with similar confidence scores ({top_score:.1f} vs {second_score:.1f})."
 
     # ID Lookup detection
     # "Order ID 132", "Customer 500", "Product ID 123"
@@ -613,35 +754,125 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
 
     # Aggregation detection
     aggregations = []
-    agg_keywords = {
-        "average": "mean", "mean": "mean", "avg": "mean", "sum": "sum", "total": "sum",
-        "count": "count", "max": "max", "min": "min", "highest": "max",
-        "lowest": "min", "median": "median", "std": "std", "variance": "var",
-        "percentile": "quantile"
-    }
-    for kw, op in agg_keywords.items():
-        if re.search(r'\b' + re.escape(kw) + r'\b', q_rewritten):
-            target_col = None
-            numeric_ops = {"sum", "mean", "median", "std", "var", "quantile"}
-            if op in numeric_ops and active_df is not None:
-                numeric_matched = [c for c in matched_columns if pd.api.types.is_numeric_dtype(active_df[c])]
-                if numeric_matched:
-                    target_col = numeric_matched[0]
-            if not target_col:
-                target_col = matched_columns[0] if matched_columns else None
-            if op == "count" and not target_col:
-                target_col = known_cols[0] if known_cols else None
-            if target_col:
-                if not any(a["column"] == target_col and a["operator"] == op for a in aggregations):
-                    aggregations.append({"column": target_col, "operator": op})
+    metric_resolved = False
 
-    # Group By Detection
+    # 1. Try Metric Catalog resolution first
+    if catalog:
+        detected_formula = catalog.resolve_metric(q_rewritten)
+        if detected_formula:
+            # Check explicit conflicting aggregation cast
+            explicit_conflict = False
+            for cast_op, kw in [("sum", "sum of"), ("mean", "avg of"), ("mean", "average of"), ("mean", "mean of"), ("min", "min of"), ("max", "max of")]:
+                if kw in q_norm:
+                    if detected_formula.operator != cast_op and detected_formula.operator != "expression":
+                        explicit_conflict = True
+                        break
+            if explicit_conflict:
+                detected_formula = None
+                
+        if detected_formula:
+            # Map detected formula
+            aggregations.append({
+                "column": detected_formula.column,
+                "operator": detected_formula.operator
+            })
+            if detected_formula.column in known_cols and detected_formula.column not in matched_columns:
+                matched_columns.insert(0, detected_formula.column)
+            # Store expression in execution plan if it is a calculated expression
+            if detected_formula.operator == "expression" and detected_formula.expression:
+                pass
+            matched_categorical["detected_metric"] = detected_formula.display_name
+            metric_resolved = True
+            confidence = 0.95
+            
+    # 2. Fall back to semantic relevance matching if no metric catalog hit
+    if not metric_resolved:
+        agg_keywords = {
+            "average": "mean", "mean": "mean", "avg": "mean", "sum": "sum", "total": "sum",
+            "count": "count", "max": "max", "min": "min", "highest": "max",
+            "lowest": "min", "median": "median", "std": "std", "variance": "var",
+            "percentile": "quantile", "minimum": "min", "maximum": "max"
+        }
+        for kw, op in agg_keywords.items():
+            if re.search(r'\b' + re.escape(kw) + r'\b', q_rewritten):
+                # Score columns based on query and this specific operator
+                column_op_scores = {}
+                for col in known_cols:
+                    score = compute_column_score(col, op)
+                    if score >= 10.0:
+                        column_op_scores[col] = score
+                        
+                # Find the best column matching this operator
+                if column_op_scores:
+                    sorted_op_matched = sorted(column_op_scores.items(), key=lambda x: x[1], reverse=True)
+                    target_col = sorted_op_matched[0][0]
+                    # Check for ambiguity
+                    if len(sorted_op_matched) >= 2:
+                        top_col, top_score = sorted_op_matched[0]
+                        sec_col, sec_score = sorted_op_matched[1]
+                        if abs(top_score - sec_score) < 15.0:
+                            if not (top_col.lower() in q_rewritten and sec_col.lower() in q_rewritten):
+                                top_sem = schema_index.get_column_semantic_type(top_col) if schema_index else None
+                                sec_sem = schema_index.get_column_semantic_type(sec_col) if schema_index else None
+                                if top_sem == sec_sem:
+                                    is_ambiguous = True
+                                    ambiguity_reason = f"Ambiguous metrics: query matches both '{top_col}' and '{sec_col}' for operator '{op}'."
+                    
+                    if not any(a["column"] == target_col and a["operator"] == op for a in aggregations):
+                        aggregations.append({"column": target_col, "operator": op})
+                        matched_categorical["detected_metric"] = f"{op.upper()}({target_col})"
+
+    # Validate all aggregations for compatibility
+    valid_aggregations = []
+    validation_rejected = False
+    for agg in aggregations:
+        col = agg["column"]
+        op = agg["operator"]
+        if op == "expression" or validate_aggregation_compatibility(col, op, schema_index):
+            valid_aggregations.append(agg)
+        else:
+            print(f"[VALIDATOR WARNING] Rejected incompatible aggregation: {op}({col})")
+            validation_rejected = True
+    aggregations = valid_aggregations
+
+    # Entity-aware distinct count checks
+    entity_terms = {"customer", "employee", "vendor", "supplier", "student", "product", "account"}
+    for agg in aggregations:
+        col = agg["column"]
+        op = agg["operator"]
+        if op == "count":
+            col_l = col.lower()
+            if any(term in col_l for term in entity_terms) or any(term in q_rewritten for term in entity_terms):
+                if schema_index and schema_index.get_column_semantic_type(col) == SemanticType.IDENTIFIER:
+                    agg["operator"] = "nunique"
+
+    # Group By Detection (English and Hindi variants)
     groupby_cols = []
-    if "by" in q_rewritten or "wise" in q_rewritten:
+    groupby_indicators = ["by", "per", "each", "grouped by", "according to", "ke hisaab se", "wise"]
+    if any(ind in q_rewritten for ind in groupby_indicators) or "wise" in q_rewritten:
         for col in known_cols:
             col_l = col.lower()
-            if f"by {col_l}" in q_rewritten or f"{col_l}-wise" in q_rewritten or f"{col_l} wise" in q_rewritten:
-                groupby_cols.append(col)
+            col_space = col_l.replace("_", " ")
+            
+            syns = [col_l, col_space]
+            if col in semantic_layer:
+                syns.extend([s.lower() for s in semantic_layer[col].get("synonyms", []) if isinstance(s, str)])
+                
+            for syn in syns:
+                patterns = [
+                    r"\bby\s+" + re.escape(syn) + r"\b",
+                    r"\bper\s+" + re.escape(syn) + r"\b",
+                    r"\beach\s+" + re.escape(syn) + r"\b",
+                    r"\bgrouped\s+by\s+" + re.escape(syn) + r"\b",
+                    r"\baccording\s+to\s+" + re.escape(syn) + r"\b",
+                    r"\b" + re.escape(syn) + r"\s+wise\b",
+                    r"\b" + re.escape(syn) + r"-wise\b",
+                    r"\b" + re.escape(syn) + r"\s+ke\s+hisaab\s+se\b"
+                ]
+                if any(re.search(pat, q_rewritten) for pat in patterns):
+                    if col not in groupby_cols:
+                        groupby_cols.append(col)
+                    break
 
     # Smart Aggregation Planner (Implicit groupby + measure + rank detection)
     # E.g. "Which city has most profit", "highest sales region"
@@ -730,8 +961,16 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
         intent = "ranking"
         confidence = 0.90
     elif matched_columns:
-        intent = "lookup"
-        confidence = 0.90
+        # Check if query asks for unique / distinct / categories / types
+        uniq_trig = ["unique", "distinct", "konse", "kaunse", "which unique", "how many and which", "types of", "list of", "different"]
+        if any(tr in q_rewritten.lower() for tr in uniq_trig):
+            intent = "unique"
+            confidence = 0.95
+            match_reason = f"Detected unique values query for column {matched_columns[0]}."
+        else:
+            intent = "lookup"
+            # Do not give false high confidence (0.90) to unaggregated column references
+            confidence = 0.45
 
     # Ambiguity check
     # E.g. "sales by date" when multiple date columns exist, we score confidence
@@ -760,6 +999,10 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
                 if is_val_numeric:
                     filt["column"] = agg_col
 
+    if is_ambiguous:
+        intent = "ambiguity"
+        confidence = 0.50
+
     # Construct baseline execution plan
     execution_plan = {
         "intent": intent,
@@ -771,23 +1014,39 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
         "chart_type": chart_type,
         "limit": limit,
         "limit_type": limit_type,
-        "offset": 0
+        "offset": 0,
+        "match_reason": ambiguity_reason if is_ambiguous else None
     }
 
     # Apply Multi-turn memory merging
     if prev_plan and active_df is not None:
         execution_plan = merge_conversational_context(execution_plan, prev_plan, question, active_df, conversation_id=conversation_id)
-        intent = execution_plan.get("intent", intent)
+        if not is_ambiguous:
+            intent = execution_plan.get("intent", intent)
 
-    # Force fallback if filters specified but not matched
-    filter_keywords = {"where", "whose", "between", "only", "greater", "less", "above", "below", "equal", ">", "<", "=", "!=", "contains", "starts", "ends", "in"}
-    has_filter_words = any(w in q_rewritten for w in filter_keywords) or any(op in q_rewritten for op in [">", "<", "=", "!="])
+    # Force fallback if filters specified but not matched (using word boundaries to prevent substring clashes)
+    filter_keywords = {"where", "whose", "between", "only", "greater", "less", "above", "below", "equal", ">", "<", "=", "!=", "contains", "starts", "ends"}
+    has_filter_words = any(re.search(r"\b" + re.escape(w) + r"\b", q_rewritten) for w in filter_keywords) or any(op in q_rewritten for op in [">", "<", "=", "!="])
     if has_filter_words and not execution_plan.get("filters") and intent in ("filter", "lookup"):
+        intent = "fallback"
+        confidence = 0.0
+        
+    # Force fallback if group-by indicators are present but no groupby column is matched
+    groupby_indicators = ["by", "per", "each", "grouped by", "according to", "ke hisaab se", "wise"]
+    has_groupby_words = any(re.search(r"\b" + re.escape(ind) + r"\b", q_rewritten) for ind in groupby_indicators)
+    if has_groupby_words and not execution_plan.get("groupby") and intent in ("aggregation", "filter", "lookup"):
         intent = "fallback"
         confidence = 0.0
         
     if len(execution_plan.get("filters", [])) > 3 or len(execution_plan.get("aggregations", [])) > 2:
         confidence = 0.60 # Complex query, LLM best suited
+
+    if is_ambiguous:
+        confidence = 0.50
+
+    if validation_rejected:
+        intent = "fallback"
+        confidence = 0.0
 
     # Compile intermediate DSL
     dsl = compile_to_dsl(execution_plan)

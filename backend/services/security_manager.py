@@ -4,6 +4,7 @@ import hmac
 import hashlib
 import base64
 import json
+from typing import Optional
 from fastapi import Request, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import backend.config as config
@@ -98,16 +99,21 @@ ROLE_PERMISSIONS = {
 def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme)) -> dict:
     """
     FastAPI dependency to verify authorization headers and return the token payload.
-    In development mode, returns a mock admin user if no token is provided.
+    In development mode, returns a mock admin user if no token or an invalid token is provided.
     """
-    if not credentials or not credentials.credentials:
+    if not credentials or not credentials.credentials or credentials.credentials in ("undefined", "null", "none"):
         if config.app_settings.environment.lower() != "production":
             return {"user_id": "dev_id", "username": "dev_user", "role": "Super Admin"}
         raise HTTPException(
             status_code=401,
             detail="Access Denied: Authorization token is missing."
         )
-    return decode_jwt(credentials.credentials)
+    try:
+        return decode_jwt(credentials.credentials)
+    except HTTPException:
+        if config.app_settings.environment.lower() != "production":
+            return {"user_id": "dev_id", "username": "dev_user", "role": "Super Admin"}
+        raise
 
 def check_permission(user_role: str, permission: str) -> bool:
     """

@@ -242,6 +242,18 @@ def execute_parsed_query(parsed: ParsedQuery, df: pd.DataFrame, df_name: str = "
             res = df[mask]
             return res, f"{df_name}[{df_name}['{id_col}'].astype(str).str.strip().str.lower() == '{str(id_val).strip().lower()}']"
 
+    # 1.5. Check Unique / Distinct Values intent
+    intent_val = getattr(parsed, "intent", None) or (parsed.execution_plan.get("intent") if parsed.execution_plan else None)
+    if intent_val == "unique":
+        matched_cols = (parsed.execution_plan.get("matched_columns") if parsed.execution_plan else []) or getattr(parsed, "selected_columns", [])
+        if not matched_cols and hasattr(parsed, "entities") and isinstance(parsed.entities, dict):
+            matched_cols = parsed.entities.get("matched_columns", [])
+        if matched_cols and matched_cols[0] in df.columns:
+            target_col = matched_cols[0]
+            val_counts = df[target_col].value_counts().dropna().reset_index()
+            val_counts.columns = [target_col, "COUNT"]
+            return val_counts, f"{df_name}['{target_col}'].value_counts().reset_index()"
+
     # 2. Check for Analytics Library execution path
     q_lower = parsed.execution_plan.get("question", "").lower()
     if parsed.intent == "analytics_lib" or any(kw in q_lower for kw in ["cagr", "yoy", "mom", "qoq", "pareto", "abc", "anomaly", "forecast", "moving average", "running total"]):
@@ -348,6 +360,13 @@ def execute_parsed_query(parsed: ParsedQuery, df: pd.DataFrame, df_name: str = "
                 # Always safe to use size() for count — it avoids the index collision
                 res = active_df.groupby(groupby_cols).size().reset_index(name="count")
                 op_str = ".size()"
+            elif agg_op in ("nunique", "distinct"):
+                if agg_col_in_groupby:
+                    res = active_df.groupby(groupby_cols).size().reset_index(name="count")
+                    op_str = ".size()"
+                else:
+                    res = active_df.groupby(groupby_cols)[agg_col].nunique().reset_index()
+                    op_str = ".nunique()"
             elif agg_op == "max":
                 if agg_col_in_groupby:
                     res = active_df.groupby(groupby_cols).size().reset_index(name="count")
@@ -417,12 +436,29 @@ def execute_parsed_query(parsed: ParsedQuery, df: pd.DataFrame, df_name: str = "
         op = agg["operator"]
         base_df_ref = expr_parts[-1] if expr_parts else df_name
         
+        if op == "expression":
+            expr = agg.get("expression")
+            if expr:
+                try:
+                    expr_trans = re.sub(
+                        r"COUNT\(\s*DISTINCT\s*\(?([a-zA-Z_][a-zA-Z0-9_\s]*)\)?\)", 
+                        rf"{base_df_ref}['\1'].nunique()", 
+                        expr, 
+                        flags=re.IGNORECASE
+                    )
+                    py_expr = formula_eng.parse_and_translate_expression(expr_trans, base_df_ref)
+                    local_vars = {base_df_ref: active_df, "np": np}
+                    val = eval(py_expr, {"__builtins__": {}}, local_vars)
+                    return val, py_expr
+                except Exception as e:
+                    print(f"[EXPRESSION ENGINE WARNING] Failed to evaluate: {e}")
+
         # Check if the column name represents a calculated measure
         if dataset_id:
             try:
                 semantic_manager = SemanticModelManager()
                 measure_item = semantic_manager.get_model_item_by_name(col, dataset_id)
-                if measure_item and measure_item["type"] in ("calculated_measure", "measure"):
+                if measure_item and measure_item["type"] == "calculated_measure" and measure_item.get("expression"):
                     val = formula_eng.evaluate_calculated_measure(active_df, measure_item["expression"])
                     return val, f"FormulaEngine().evaluate_calculated_measure({base_df_ref}, '{measure_item['expression']}')"
             except Exception as e:
@@ -437,6 +473,9 @@ def execute_parsed_query(parsed: ParsedQuery, df: pd.DataFrame, df_name: str = "
         elif op == "count":
             val = len(active_df)
             code_expr = f"len({base_df_ref})"
+        elif op in ("nunique", "distinct"):
+            val = active_df[col].nunique()
+            code_expr = f"{base_df_ref}['{col}'].nunique()"
         elif op == "max":
             if not active_df.empty:
                 idx = active_df[col].idxmax()

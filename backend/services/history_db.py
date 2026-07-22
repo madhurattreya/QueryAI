@@ -4,13 +4,181 @@ import uuid
 from datetime import datetime
 from backend.services.loader import DATA_DIR
 
+import backend.config as config
+
 DB_FILE = os.path.join(DATA_DIR, "studio_metadata.db")
 
+
+class PostgresCursorWrapper:
+    def __init__(self, pg_cursor):
+        self._cursor = pg_cursor
+        self.db_type = "postgres"
+
+    def execute(self, query: str, params=None):
+        query_pg = query.replace("?", "%s")
+        if "julianday('now') - julianday(created_at)" in query_pg:
+            query_pg = query_pg.replace(
+                "julianday('now') - julianday(created_at)",
+                "EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400.0"
+            )
+        if params:
+            self._cursor.execute(query_pg, params)
+        else:
+            self._cursor.execute(query_pg)
+        return self
+
+    def fetchone(self):
+        row = self._cursor.fetchone()
+        if row is None:
+            return None
+        return dict(row)
+
+    def fetchall(self):
+        rows = self._cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    def __getattr__(self, name):
+        return getattr(self._cursor, name)
+
+
+class PostgresConnWrapper:
+    def __init__(self, pg_conn):
+        self._conn = pg_conn
+        self.db_type = "postgres"
+
+    def cursor(self):
+        import psycopg2.extras
+        return PostgresCursorWrapper(self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor))
+
+    def execute(self, query: str, params=None):
+        cur = self.cursor()
+        cur.execute(query, params)
+        return cur
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
+class MysqlCursorWrapper:
+    def __init__(self, mysql_cursor):
+        self._cursor = mysql_cursor
+        self.db_type = "mysql"
+
+    def execute(self, query: str, params=None):
+        query_mysql = query.replace("?", "%s")
+        # Auto-escape MySQL reserved keywords: rows, columns, condition
+        import re
+        query_mysql = re.sub(r'\b(rows|columns|condition)\b', r'`\1`', query_mysql, flags=re.IGNORECASE)
+        
+        # MySQL DDL compatibility for TEXT primary keys, foreign keys, and defaults
+        if query_mysql.strip().upper().startswith("CREATE TABLE"):
+            query_mysql = re.sub(r'\bTEXT\s+PRIMARY\s+KEY\b', 'VARCHAR(255) PRIMARY KEY', query_mysql, flags=re.IGNORECASE)
+            query_mysql = re.sub(r'\bTEXT\s+UNIQUE\b', 'VARCHAR(255) UNIQUE', query_mysql, flags=re.IGNORECASE)
+            query_mysql = re.sub(r'\bTEXT\s+DEFAULT\b', 'VARCHAR(255) DEFAULT', query_mysql, flags=re.IGNORECASE)
+            query_mysql = re.sub(r'(\b\w+_id\b|\b\w+_key\b|\bid\b|\brole\b|\busername\b|\bemail\b|\bsource\b|\btype\b|\bstatus\b|\bfilename\b|\bhash\b|\bchart_type\b|\bhtml_path\b|\bpng_path\b|\bresult_file\b|\bchart_id\b|\bname\b)\s+TEXT\b', r'\1 VARCHAR(255)', query_mysql, flags=re.IGNORECASE)
+        
+        if "julianday('now') - julianday(created_at)" in query_mysql:
+            query_mysql = query_mysql.replace(
+                "julianday('now') - julianday(created_at)",
+                "TIMESTAMPDIFF(SECOND, created_at, NOW()) / 86400.0"
+            )
+        if query_mysql.strip().upper().startswith("CREATE INDEX"):
+            query_mysql = query_mysql.replace(" IF NOT EXISTS", "").replace(" if not exists", "")
+            try:
+                self._cursor.execute(query_mysql, params)
+            except Exception:
+                pass
+            return self
+
+        if params:
+            self._cursor.execute(query_mysql, params)
+        else:
+            self._cursor.execute(query_mysql)
+        return self
+
+    def fetchone(self):
+        row = self._cursor.fetchone()
+        if row is None:
+            return None
+        return dict(row)
+
+    def fetchall(self):
+        rows = self._cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    def __getattr__(self, name):
+        return getattr(self._cursor, name)
+
+
+class MysqlConnWrapper:
+    def __init__(self, mysql_conn):
+        self._conn = mysql_conn
+        self.db_type = "mysql"
+
+    def cursor(self):
+        import pymysql.cursors
+        return MysqlCursorWrapper(self._conn.cursor(pymysql.cursors.DictCursor))
+
+    def execute(self, query: str, params=None):
+        cur = self.cursor()
+        cur.execute(query, params)
+        return cur
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
 def get_db_connection():
+    db_url = config.app_settings.database_url
+    if db_url.startswith("postgresql://") or db_url.startswith("postgres://"):
+        try:
+            import psycopg2
+            pg_conn = psycopg2.connect(db_url)
+            pg_conn.autocommit = False
+            return PostgresConnWrapper(pg_conn)
+        except Exception as e:
+            # Fallback to local SQLite if Postgres is unreachable
+            print(f"[DB WARN] Could not connect to PostgreSQL ({e}). Falling back to local SQLite.")
+
+    elif db_url.startswith("mysql://") or db_url.startswith("mysql+pymysql://"):
+        try:
+            import urllib.parse
+            import pymysql
+            url_clean = db_url.replace("mysql+pymysql://", "mysql://")
+            parsed = urllib.parse.urlparse(url_clean)
+            mysql_conn = pymysql.connect(
+                host=parsed.hostname or "localhost",
+                port=parsed.port or 3306,
+                user=parsed.username or "root",
+                password=parsed.password or "",
+                database=parsed.path.lstrip("/"),
+                autocommit=False
+            )
+            return MysqlConnWrapper(mysql_conn)
+        except Exception as e:
+            # Fallback to local SQLite if MySQL is unreachable
+            print(f"[DB WARN] Could not connect to MySQL ({e}). Falling back to local SQLite.")
+
     conn = sqlite3.connect(DB_FILE)
-    conn.execute("PRAGMA foreign_keys = ON;")
+    try:
+        conn.execute("PRAGMA foreign_keys = ON;")
+    except Exception:
+        pass
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def init_db():
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -19,10 +187,27 @@ def init_db():
     
     # Helper to add columns idempotently
     def add_col(table, col, col_type):
-        cursor.execute(f"PRAGMA table_info({table})")
-        cols = [r['name'] for r in cursor.fetchall()]
-        if col not in cols:
-            cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
+        active_type = getattr(cursor, "db_type", "sqlite")
+        if active_type == "postgres":
+            try:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_type}")
+                return
+            except Exception:
+                pass
+        elif active_type == "mysql":
+            try:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
+                return
+            except Exception:
+                pass
+        try:
+            cursor.execute(f"PRAGMA table_info({table})")
+            cols = [r['name'] for r in cursor.fetchall()]
+            if col not in cols:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
+        except Exception:
+            pass
+            pass
 
     # 1. Create datasets table
     cursor.execute("""

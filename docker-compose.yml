@@ -1,0 +1,109 @@
+version: "3.9"
+
+# ─── QueryIQ Production Stack ─────────────────────────────────────────────────
+# Usage:
+#   Development:  docker-compose up
+#   Production:   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Before starting, copy .env.example to .env and fill in all required values.
+
+services:
+
+  # ─── Backend (FastAPI) ──────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: queryiq-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - BACKEND_PORT=8000
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      # Persist uploaded data and generated charts
+      - queryiq_data:/app/data
+    networks:
+      - queryiq-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - postgres
+
+  # ─── Frontend (Next.js) ─────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./nexus-ai-studio
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${FRONTEND_API_URL:-http://localhost:8000}
+    container_name: queryiq-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - queryiq-net
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ─── Nginx Reverse Proxy ────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: queryiq-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      # Uncomment for SSL certificates (Let's Encrypt):
+      # - ./certs:/etc/nginx/certs:ro
+    networks:
+      - queryiq-net
+    depends_on:
+      - backend
+      - frontend
+
+  # ─── PostgreSQL (Production Database) ───────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: queryiq-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-queryiq_db}
+      POSTGRES_USER: ${POSTGRES_USER:-queryiq}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_in_production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - queryiq-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-queryiq}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ─── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  queryiq_data:
+    driver: local
+  postgres_data:
+    driver: local
+
+# ─── Networks ─────────────────────────────────────────────────────────────────
+networks:
+  queryiq-net:
+    driver: bridge

@@ -17,6 +17,7 @@ export default function Sidebar({ statusText = "Ready", loadedFiles = [], sqlCon
     { name: "Datasets", href: "/connect", icon: "database" },
     { name: "SQL Explorer", href: "/explorer", icon: "code" },
     { name: "Chat Analyst", href: "/query", icon: "history" },
+    { name: "Agent Loop", href: "/agent", icon: "psychology" },
     { name: "Visualizations", href: "/visualizations", icon: "monitoring" },
     { name: "Business Insights", href: "/insights", icon: "insights" },
     { name: "Settings", href: "/settings", icon: "settings" },

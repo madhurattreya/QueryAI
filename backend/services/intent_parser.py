@@ -183,20 +183,18 @@ class IntentParser:
                             )
 
             # Simple unique/distinct match
-            uniq_keywords = ["unique", "distinct", "different", "unique values of", "distinct values of"]
+            uniq_keywords = ["unique", "distinct", "different", "unique values of", "distinct values of", "which unique", "how many and which", "konse", "kaunse"]
             for kw in uniq_keywords:
                 if kw in q_clean:
                     for col in cols:
                         if col.lower() in q_clean:
-                            # If it's a count of unique/distinct, let the LLM handle or fallback to aggregation
-                            if "count" not in q_clean and "how many" not in q_clean:
-                                return IntentResult(
-                                    intent=IntentType.UNIQUE,
-                                    confidence=0.85,
-                                    is_deterministic=True,
-                                    params={"column": col},
-                                    matched_patterns=["unique_col_match"],
-                                )
+                            return IntentResult(
+                                intent=IntentType.UNIQUE,
+                                confidence=0.90,
+                                is_deterministic=True,
+                                params={"column": col},
+                                matched_patterns=["unique_col_match"],
+                            )
 
             # Simple null check match
             null_keywords = ["null", "missing", "nan", "empty", "nulls", "missing values"]

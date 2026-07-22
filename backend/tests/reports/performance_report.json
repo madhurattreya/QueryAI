@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-07-20T12:50:56.978290",
+  "metrics": {
+    "accuracy": 100.0,
+    "warm_start_latency_ms": 1.0960054397583008,
+    "cold_start_latency_ms": 672.1482276916504,
+    "memory_delta_mb": 0.1953125,
+    "incorrect_rate": 0.0
+  },
+  "gates": {
+    "schema_evolution": "PASSED",
+    "api_contract": "PASSED",
+    "stability": "PASSED",
+    "query_replay": "PASSED"
+  }
+}

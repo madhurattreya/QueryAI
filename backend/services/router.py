@@ -108,6 +108,8 @@ def classify_query_engine_detailed(question: str, prev_plan: dict = None, conver
                 legacy_engine = "general_chat"
             elif plan.engine_type == EngineType.KPI_DASHBOARD:
                 legacy_engine = "kpi_dashboard"
+            elif plan.engine_type == EngineType.AMBIGUITY:
+                legacy_engine = "ambiguity"
                 
             parsed = ParsedQuery(
                 intent=plan.intent.value,
@@ -144,6 +146,7 @@ def classify_query_engine_detailed(question: str, prev_plan: dict = None, conver
                 "fallback_reason": None,
                 "llm_used": False,
                 "execution_cost": 0.1,
+                "fallback_used": False,
                 "parsed_query": parsed
             }
             
@@ -189,29 +192,41 @@ def classify_query_engine_detailed(question: str, prev_plan: dict = None, conver
     elif parsed.intent == "visualization":
         engine_selected = "visualization"
         cost = 0.5
+    # 6.5. Ambiguity check
+    elif parsed.intent == "ambiguity":
+        engine_selected = "ambiguity"
+        cost = 0.1
+        llm_used = False
     # 7. SQL or LLM fallback
     else:
-        # Check confidence
-        if parsed.confidence < config.app_settings.confidence_threshold_hybrid:
-            llm_used = True
-            cost = 2.0  # High cost of LLM invocation
-            if "forecast" in q_lower or "predict" in q_lower:
-                engine_selected = "prediction"
-                fallback_reason = "Forecasting/Prediction request requires LLM Planner."
-            elif config.current_source_type == "sql" and config.database_engine:
-                engine_selected = "sql"
-                fallback_reason = "SQL database engine requires LLM translation."
-            else:
-                engine_selected = "llm"
-                fallback_reason = f"Confidence score {parsed.confidence:.2f} is below hybrid threshold {config.app_settings.confidence_threshold_hybrid}."
-        elif parsed.confidence < config.app_settings.confidence_threshold_deterministic:
-            llm_used = False  # Runs deterministically through hybrid execution plan parser
-            engine_selected = "hybrid"
-            cost = 0.5
-            fallback_reason = f"Confidence score {parsed.confidence:.2f} is in hybrid range [{config.app_settings.confidence_threshold_hybrid}, {config.app_settings.confidence_threshold_deterministic})."
-        else:
+        # Standardized confidence thresholds
+        if parsed.confidence >= 0.90:
             engine_selected = "deterministic"
             cost = 0.2
+            llm_used = False
+        elif 0.75 <= parsed.confidence < 0.90:
+            engine_selected = "deterministic"
+            cost = 0.2
+            llm_used = False
+        else:
+            if parsed.confidence < config.app_settings.confidence_threshold_hybrid:
+                llm_used = True
+                cost = 2.0  # High cost of LLM invocation
+                if "forecast" in q_lower or "predict" in q_lower:
+                    engine_selected = "prediction"
+                    fallback_reason = "Forecasting/Prediction request requires LLM Planner."
+                elif config.current_source_type == "sql" and config.database_engine:
+                    engine_selected = "sql"
+                    fallback_reason = "SQL database engine requires LLM translation."
+                else:
+                    engine_selected = "llm"
+                    fallback_reason = f"Confidence score {parsed.confidence:.2f} is below hybrid threshold."
+            else:
+                # Under 75 confidence for deterministic fallback maps to ambiguity
+                engine_selected = "ambiguity"
+                parsed.intent = "ambiguity"
+                cost = 0.1
+                llm_used = False
 
     # Matched categories/values
     matched_values = list(parsed.entities.get("matched_categorical", {}).values())
@@ -231,6 +246,7 @@ def classify_query_engine_detailed(question: str, prev_plan: dict = None, conver
         "fallback_reason": fallback_reason,
         "llm_used": llm_used,
         "execution_cost": cost,
+        "fallback_used": True,
         "parsed_query": parsed
     }
 

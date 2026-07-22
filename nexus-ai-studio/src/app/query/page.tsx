@@ -777,7 +777,9 @@ export default function QueryPage() {
                           {msg.content && (
                             <div>
                               <h4 className="text-[10px] font-bold text-deep-navy uppercase tracking-wider mb-1.5">Analysis Summary</h4>
-                              <p className="text-xs text-on-surface leading-relaxed font-semibold select-text">{msg.content}</p>
+                              <p className="text-xs text-on-surface leading-relaxed font-semibold select-text">
+                                {msg.content.split("### Suggested Next Questions")[0].trim()}
+                              </p>
                             </div>
                           )}
 

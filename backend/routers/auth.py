@@ -1,12 +1,17 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 import uuid
 import time
 import re
 import backend.services.history_db as db
 from backend.services.security_manager import hash_password, verify_password, create_jwt
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# Rate limiter — uses client IP as key
+limiter = Limiter(key_func=get_remote_address)
 
 EMAIL_REGEX = re.compile(r"[^@]+@[^@]+\.[^@]+")
 
@@ -30,7 +35,8 @@ class PasswordResetConfirm(BaseModel):
     new_password: str
 
 @router.post("/signup")
-def signup(payload: UserRegister):
+@limiter.limit("3/minute")
+def signup(request: Request, payload: UserRegister):
     if not EMAIL_REGEX.match(payload.email):
         raise HTTPException(status_code=400, detail="Invalid email format.")
         
@@ -69,7 +75,8 @@ def signup(payload: UserRegister):
 
 
 @router.post("/login")
-def login(payload: UserLogin):
+@limiter.limit("5/minute")
+def login(request: Request, payload: UserLogin):
     conn = db.get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE username = ?", (payload.username,))
@@ -155,7 +162,8 @@ def logout(current_user: dict = Depends(verify_token)):
 
 
 @router.post("/reset-password/request")
-def request_password_reset(payload: PasswordResetRequest):
+@limiter.limit("3/minute")
+def request_password_reset(request: Request, payload: PasswordResetRequest):
     conn = db.get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT id, username FROM users WHERE email = ?", (payload.email,))
@@ -173,7 +181,11 @@ def request_password_reset(payload: PasswordResetRequest):
     from backend.services.security import log_audit_action
     log_audit_action(user["username"], "Reset Requested", "Generated password reset link/token")
 
-    return {"status": "success", "message": "Password reset token sent", "debug_token": reset_token}
+    # TODO (Production): Send reset_token to user["email"] via SMTP/SendGrid.
+    # NEVER return the reset token in the HTTP response body.
+    # Example: email_service.send_reset_email(email=payload.email, token=reset_token)
+
+    return {"status": "success", "message": "If this email is registered, a password reset link has been sent."}
 
 
 @router.post("/reset-password/confirm")

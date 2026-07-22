@@ -48,9 +48,11 @@ class QueryPlanner:
         """
         t_start = time.time()
         q = question.lower().strip()
-
+        from backend.services.query_parser import rewrite_query
+        q_rewritten = rewrite_query(question)
+        
         # 1. Parse Intent Deterministically
-        intent_res = self.intent_parser.parse(question)
+        intent_res = self.intent_parser.parse(q_rewritten)
 
         # 2. Determine target execution engine
         engine = EngineType.LLM  # default fallback
@@ -97,6 +99,7 @@ class QueryPlanner:
         )
 
         # 2.5. Retrieve active filters from legacy parser to preserve exact filtering context
+        legacy_validation_failed = False
         try:
             from backend.services.query_parser import parse_question
             active_df = None
@@ -104,14 +107,17 @@ class QueryPlanner:
                 active_df = config.datasets.get(self.dataset_name)
             
             parsed_legacy = parse_question(question, active_df, self.dataset_name or "")
-            if parsed_legacy and parsed_legacy.filters:
-                # Map extracted filters to FilterClause list
-                for f in parsed_legacy.filters:
-                    plan.filters.append(FilterClause(
-                        column=f["column"],
-                        operator=f["operator"],
-                        value=f["value"]
-                    ))
+            if parsed_legacy:
+                if parsed_legacy.confidence == 0.0:
+                    legacy_validation_failed = True
+                if parsed_legacy.filters:
+                    # Map extracted filters to FilterClause list
+                    for f in parsed_legacy.filters:
+                        plan.filters.append(FilterClause(
+                            column=f["column"],
+                            operator=f["operator"],
+                            value=f["value"]
+                        ))
         except Exception as e:
             print(f"[PLANNER CONTEXT WARNING] Failed to import legacy parser context: {e}")
 
@@ -129,6 +135,10 @@ class QueryPlanner:
             sql_expr = self._mock_sql_query(plan)
             val_res = self.validator.validate_sql_query(sql_expr)
             plan.validation_result = val_res
+
+        if legacy_validation_failed:
+            plan.confidence = 0.0
+            plan.engine_type = EngineType.LLM
 
         return plan
 

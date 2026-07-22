@@ -13,6 +13,7 @@ Used by ColumnResolver and IntentParser for accurate column matching
 without relying on substring search over unstructured text.
 """
 from __future__ import annotations
+from enum import Enum
 import re
 import time
 from typing import Any, Dict, List, Optional, Set
@@ -21,16 +22,60 @@ import pandas as pd
 from backend.models.execution_plan import ColumnMatch, ResolutionStrategy
 
 
+class SemanticType(str, Enum):
+    IDENTIFIER = "identifier"
+    MEASURE = "measure"
+    DIMENSION = "dimension"
+    DATE = "date"
+    BOOLEAN = "boolean"
+
+
 class ColumnEntry:
     """Metadata for a single column in the schema index."""
 
-    def __init__(self, name: str, dtype: str, sample_values: List[Any]):
+    def __init__(self, name: str, dtype: str, sample_values: List[Any], override_type: Optional[str] = None):
         self.name = name
         self.dtype = dtype
         self.sample_values = sample_values[:5]
 
         # Pre-compute all searchable variants
         self.variants: Set[str] = self._build_variants(name)
+
+        # Set semantic type using override or classifier
+        if override_type:
+            try:
+                self.semantic_type = SemanticType(override_type)
+            except ValueError:
+                self.semantic_type = self._classify_semantic_type(name, dtype)
+        else:
+            self.semantic_type = self._classify_semantic_type(name, dtype)
+
+    def _classify_semantic_type(self, name: str, dtype: str) -> SemanticType:
+        col_lower = name.lower()
+        # 1. Identifier Check
+        ID_PATTERNS = [
+            r".*_id$", r".*id$", r".*code$", r".*number$", r".*no$",
+            r".*key$", r".*uuid$", r".*ref$", r".*reference$", r"^id$"
+        ]
+        if any(re.match(pat, col_lower) for pat in ID_PATTERNS) or col_lower in (
+            "clientid", "invoice#", "custno", "serial", "txn", "ref"
+        ):
+            return SemanticType.IDENTIFIER
+
+        # 2. Date Check
+        if "datetime" in dtype.lower() or "timestamp" in dtype.lower() or any(w in col_lower for w in ("date", "time", "year", "month", "joined", "hired")):
+            return SemanticType.DATE
+
+        # 3. Boolean Check
+        if "bool" in dtype.lower():
+            return SemanticType.BOOLEAN
+
+        # 4. Measure Check (numeric and not an identifier/date)
+        if "int" in dtype.lower() or "float" in dtype.lower():
+            return SemanticType.MEASURE
+
+        # 5. Dimension Check (fallback for categorical/string)
+        return SemanticType.DIMENSION
 
     def _build_variants(self, name: str) -> Set[str]:
         variants = set()
@@ -78,13 +123,49 @@ class SchemaIndex:
 
     def _build(self, df: pd.DataFrame) -> None:
         """Build the index from a DataFrame."""
+        overrides = {}
+        try:
+            from backend.services.semantic_model import SemanticModelManager
+            import backend.services.history_db as db
+            
+            conn = db.get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM datasets WHERE name = ? LIMIT 1", (self.dataset_name,))
+            row = cursor.fetchone()
+            conn.close()
+            
+            if row:
+                dataset_id = row["id"]
+                custom_items = SemanticModelManager().get_model_items(dataset_id)
+                for item in custom_items:
+                    col_name = item["name"]
+                    if item.get("is_measure") == 1:
+                        overrides[col_name] = "measure"
+                    elif item.get("is_dimension") == 1:
+                        overrides[col_name] = "dimension"
+                    elif item.get("category"):
+                        cat = item["category"].lower()
+                        if "measure" in cat:
+                            overrides[col_name] = "measure"
+                        elif "dimension" in cat:
+                            overrides[col_name] = "dimension"
+                        elif "identifier" in cat or "id" in cat:
+                            overrides[col_name] = "identifier"
+                        elif "date" in cat or "time" in cat:
+                            overrides[col_name] = "date"
+                        elif "bool" in cat:
+                            overrides[col_name] = "boolean"
+        except Exception as e:
+            print(f"[SCHEMA INDEX WARNING] Failed to load semantic overrides from database: {e}")
+
         for col in df.columns:
             dtype_str = str(df[col].dtype)
             try:
                 sample = df[col].dropna().head(5).tolist()
             except Exception:
                 sample = []
-            entry = ColumnEntry(col, dtype_str, sample)
+            override_type = overrides.get(col)
+            entry = ColumnEntry(col, dtype_str, sample, override_type)
             self._columns[col] = entry
 
     # ── Public API ─────────────────────────────────────────────────────────────
@@ -92,6 +173,15 @@ class SchemaIndex:
     def get_all_columns(self) -> List[str]:
         """Return all column names in original case."""
         return list(self._columns.keys())
+
+    def get_column_semantic_type(self, column: str) -> Optional[SemanticType]:
+        if column in self._columns:
+            return self._columns[column].semantic_type
+        col_lower = column.lower()
+        for k, entry in self._columns.items():
+            if k.lower() == col_lower:
+                return entry.semantic_type
+        return None
 
     def get_numeric_columns(self) -> List[str]:
         return [col for col, entry in self._columns.items() if entry.is_numeric]

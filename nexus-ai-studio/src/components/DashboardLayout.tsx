@@ -88,6 +88,16 @@ export default function DashboardLayout({ children, fullScreen = false }: Dashbo
               >
                 Analytics
               </Link>
+              <Link
+                href="/agent"
+                className={`h-full flex items-center px-1 border-b-2 transition-all ${
+                  pathname === "/agent"
+                    ? "border-vibrant-blue text-vibrant-blue"
+                    : "border-transparent text-on-surface-variant hover:text-vibrant-blue"
+                }`}
+              >
+                Agent Loop
+              </Link>
             </nav>
           </div>
 

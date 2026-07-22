@@ -200,16 +200,21 @@ _is_production = config.app_settings.environment.lower() == "production"
 # In development, also allow localhost origins for convenience.
 if _is_production:
     allowed_origins = [_frontend_url]
+    allow_origin_regex = None
 else:
     allowed_origins = list(dict.fromkeys([
         _frontend_url,
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
     ]))
+    allow_origin_regex = r"http://(localhost|127\.0\.0\.1)(:\d+)?"
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],

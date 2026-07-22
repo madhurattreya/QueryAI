@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ApiClient } from "@/lib/apiClient";
 
 interface Insight {
   title: string;
@@ -20,7 +21,7 @@ export default function InsightsPage() {
     setLoading(true);
     setErrorMsg("");
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/insights");
+      const res = await ApiClient.request("/api/insights");
       if (res.ok) {
         const data = await res.json();
         setInsights(data.insights || []);

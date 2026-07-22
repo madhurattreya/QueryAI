@@ -147,6 +147,29 @@ def refresh(payload: TokenRefreshRequest):
 
 from backend.services.security_manager import verify_token
 
+@router.get("/me")
+def get_me(current_user: dict = Depends(verify_token)):
+    user_id = current_user.get("user_id")
+    if not user_id or user_id == "dev_id":
+        return {
+            "status": "success",
+            "user": {
+                "id": "dev_id",
+                "username": current_user.get("username", "admin"),
+                "email": "admin@queryiq.local",
+                "role": current_user.get("role", "Super Admin")
+            }
+        }
+    conn = db.get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, email, role, is_verified, created_at FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    if not user:
+        return {"status": "success", "user": current_user}
+    return {"status": "success", "user": user}
+
+
 @router.post("/logout")
 def logout(current_user: dict = Depends(verify_token)):
     username = current_user.get("username")

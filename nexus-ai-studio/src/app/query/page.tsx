@@ -52,7 +52,7 @@ export default function QueryPage() {
 
   const fetchActiveDataset = async () => {
     try {
-      const res = await fetch(ApiClient.getUrl("/api/datasets"));
+      const res = await ApiClient.request("/api/datasets");
       if (res.ok) {
         const data = await res.json();
         const active = data.find((ds: any) => ds.is_active === 1);
@@ -63,7 +63,7 @@ export default function QueryPage() {
         const schemas: { [key: string]: any[] } = {};
         for (const ds of data) {
           try {
-            const schemaRes = await fetch(ApiClient.getUrl(`/api/datasets/schema/${ds.id}`));
+            const schemaRes = await ApiClient.request(`/api/datasets/schema/${ds.id}`);
             if (schemaRes.ok) {
               const schemaData = await schemaRes.json();
               schemas[ds.id] = schemaData.columns || [];
@@ -88,7 +88,7 @@ export default function QueryPage() {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const res = await fetch(ApiClient.getUrl("/api/status"));
+        const res = await ApiClient.request("/api/status");
         if (res.ok) {
           const data = await res.json();
           if (data.settings) {
@@ -171,7 +171,7 @@ export default function QueryPage() {
   // Load conversations list on mount
   const fetchConversations = async () => {
     try {
-      const res = await fetch(ApiClient.getUrl("/api/conversations"));
+      const res = await ApiClient.request("/api/conversations");
       if (res.ok) {
         const data = await res.json();
         setConversations(data);
@@ -190,7 +190,7 @@ export default function QueryPage() {
     const delayDebounceFn = setTimeout(async () => {
       if (searchQuery.trim()) {
         try {
-          const res = await fetch(ApiClient.getUrl(`/api/conversations/search?q=${encodeURIComponent(searchQuery)}`));
+          const res = await ApiClient.request(`/api/conversations/search?q=${encodeURIComponent(searchQuery)}`);
           if (res.ok) {
             const data = await res.json();
             setConversations(data);
@@ -213,7 +213,7 @@ export default function QueryPage() {
     setMessages([]);
     setErrorMessage("");
     try {
-      const res = await fetch(ApiClient.getUrl(`/api/conversation/${id}`));
+      const res = await ApiClient.request(`/api/conversation/${id}`);
       if (res.ok) {
         const data = await res.json();
         const formattedMsgs: ChatMessage[] = data.messages.map((m: any) => ({
@@ -247,7 +247,7 @@ export default function QueryPage() {
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this conversation?")) return;
     try {
-      const res = await fetch(ApiClient.getUrl(`/api/conversation/${id}`), {
+      const res = await ApiClient.request(`/api/conversation/${id}`, {
         method: "DELETE"
       });
       if (res.ok) {
@@ -328,7 +328,7 @@ export default function QueryPage() {
     try {
       const res = await fetch(ApiClient.getUrl("/api/query"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: ApiClient.getHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           question: userQuestion,
           conversation_id: activeConvId

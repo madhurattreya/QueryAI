@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ApiClient } from "@/lib/apiClient";
 
 export default function VisualizationsPage() {
   const [hasChart, setHasChart] = useState(false);
@@ -9,13 +10,10 @@ export default function VisualizationsPage() {
 
   const checkChart = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/status");
+      const res = await ApiClient.request("/api/status");
       if (res.ok) {
         const data = await res.json();
-        // Check if a query execution created a chart.
-        // We can check this directly. The endpoint /api/chart/html returns 404 if no chart,
-        // so we can test the fetch.
-        const chartRes = await fetch("http://127.0.0.1:8000/api/chart/html", { method: "HEAD" });
+        const chartRes = await ApiClient.request("/api/chart/html", { method: "HEAD" });
         setHasChart(chartRes.ok);
       }
     } catch (err) {

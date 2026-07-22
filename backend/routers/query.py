@@ -46,10 +46,23 @@ def run_query(req: QueryRequest, background_tasks: BackgroundTasks, request: Req
 @router.get("/conversations")
 def get_conversations(request: Request):
     """
-    Returns list of all active user conversations for the workspace.
+    Returns list of active conversations for the authenticated user.
     """
     workspace_id = request.headers.get("x-workspace-id")
-    return db.list_conversations(workspace_id)
+    user_id = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        try:
+            token = auth_header.split(" ")[1]
+            from backend.services.security_manager import decode_jwt
+            payload = decode_jwt(token)
+            user_id = payload.get("user_id")
+            if payload.get("role") == "Super Admin":
+                user_id = None
+        except Exception:
+            pass
+
+    return db.list_conversations(workspace_id, user_id)
 
 
 @router.get("/conversations/search")
@@ -106,13 +119,32 @@ def delete_conversation_api(id: str):
 def get_chart_html(id: str | None = None):
     """
     Retrieves interactive Plotly HTML visualization.
+    If no ID is provided, returns the latest static chart.html.
     """
     if id:
         safe_id = os.path.basename(id)
         path = os.path.join(CHARTS_DIR, f"{safe_id}.html")
         if os.path.exists(path):
             return FileResponse(path, media_type="text/html")
+    
+    # Fallback to static chart.html
+    static_path = os.path.join(CHARTS_DIR, "chart.html")
+    if os.path.exists(static_path):
+        return FileResponse(static_path, media_type="text/html")
+
     raise HTTPException(status_code=404, detail="No interactive chart available.")
+
+
+@router.get("/chart/plotly.min.js")
+@router.get("/chart/html/plotly.min.js")
+def get_plotly_js():
+    """
+    Serves local Plotly JavaScript library for instant offline rendering without CDN latency.
+    """
+    js_path = os.path.join(CHARTS_DIR, "plotly.min.js")
+    if os.path.exists(js_path):
+        return FileResponse(js_path, media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="Plotly JS file not found.")
 
 
 @router.get("/chart/png")
@@ -128,4 +160,10 @@ def get_chart_png(id: str | None = None):
             cf.generate_png_on_demand(CHARTS_DIR, safe_id)
         if os.path.exists(path):
             return FileResponse(path, media_type="image/png")
+    
+    # Fallback static png
+    static_png = os.path.join(CHARTS_DIR, "chart.png")
+    if os.path.exists(static_png):
+        return FileResponse(static_png, media_type="image/png")
+
     raise HTTPException(status_code=404, detail="No static chart available.")

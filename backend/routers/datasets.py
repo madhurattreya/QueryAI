@@ -20,39 +20,82 @@ from fastapi import Request
 @router.get("/datasets")
 def list_datasets_endpoint(request: Request):
     """
-    Returns metadata and stats of all registered datasets.
+    Returns metadata and stats of all registered datasets for the authenticated user.
     """
+    user_id = None
+    user_role = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        try:
+            token = auth_header.split(" ")[1]
+            from backend.services.security_manager import decode_jwt
+            payload = decode_jwt(token)
+            user_id = payload.get("user_id") or payload.get("username") or payload.get("sub")
+            user_role = payload.get("role")
+        except Exception:
+            pass
+
     workspace_id = request.headers.get("x-workspace-id")
     conn = db.get_db_connection()
     cursor = conn.cursor()
-    if workspace_id:
-        cursor.execute("SELECT * FROM datasets WHERE workspace_id = ? ORDER BY upload_time DESC", (workspace_id,))
+
+    if user_id and user_role != "Super Admin":
+        if workspace_id:
+            cursor.execute("SELECT * FROM datasets WHERE (user_id = ? OR user_id IS NULL OR workspace_id = ? OR workspace_id IS NULL) ORDER BY upload_time DESC", (user_id, workspace_id))
+        else:
+            cursor.execute("SELECT * FROM datasets WHERE (user_id = ? OR user_id IS NULL) ORDER BY upload_time DESC", (user_id,))
     else:
-        cursor.execute("SELECT * FROM datasets ORDER BY upload_time DESC")
+        if workspace_id:
+            cursor.execute("SELECT * FROM datasets WHERE (workspace_id = ? OR workspace_id IS NULL) ORDER BY upload_time DESC", (workspace_id,))
+        else:
+            cursor.execute("SELECT * FROM datasets ORDER BY upload_time DESC")
+
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]
 
 @router.post("/datasets/active")
-def set_active_dataset_endpoint(req: ActivateRequest):
+def set_active_dataset_endpoint(req: ActivateRequest, request: Request):
     """
     Thread-safe activation switcher.
     """
+    user_id = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        try:
+            token = auth_header.split(" ")[1]
+            from backend.services.security_manager import decode_jwt
+            payload = decode_jwt(token)
+            user_id = payload.get("user_id")
+        except Exception:
+            pass
+
     try:
         manager = DatasetManager()
-        manager.activate_dataset_by_id(req.id)
+        manager.activate_dataset_by_id(req.id, user_id=user_id)
         return {"status": "success", "message": f"Activated dataset {req.id}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/datasets/active/multiple")
-def set_active_datasets_endpoint(req: ActivateMultipleRequest):
+def set_active_datasets_endpoint(req: ActivateMultipleRequest, request: Request):
     """
     Thread-safe multi-activation switcher.
     """
+    user_id = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        try:
+            token = auth_header.split(" ")[1]
+            from backend.services.security_manager import decode_jwt
+            payload = decode_jwt(token)
+            user_id = payload.get("user_id")
+        except Exception:
+            pass
+
     try:
         manager = DatasetManager()
-        manager.activate_datasets_multiple(req.ids)
+        manager.activate_datasets_multiple(req.ids, user_id=user_id)
         return {"status": "success", "message": f"Activated datasets {req.ids}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

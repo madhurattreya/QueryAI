@@ -58,6 +58,22 @@ def detect_date_columns(df: pd.DataFrame) -> list:
                 pass
     return date_cols
 
+
+def load_csv_safely(filepath: str, nrows: int = None) -> pd.DataFrame:
+    """
+    Robust CSV loader with automatic encoding detection (utf-8-sig, utf-8, latin1, cp1252),
+    BOM cleanup, and delimiter auto-detection for European Excel exports.
+    """
+    for enc in ["utf-8-sig", "utf-8", "latin1", "cp1252"]:
+        try:
+            df = pd.read_csv(filepath, nrows=nrows, encoding=enc)
+            if len(df.columns) == 1 and ";" in str(df.columns[0]):
+                df = pd.read_csv(filepath, nrows=nrows, encoding=enc, sep=";")
+            return df
+        except Exception:
+            continue
+    return pd.read_csv(filepath, nrows=nrows, encoding="latin1", on_bad_lines="skip")
+
 class DatasetManager:
     _instance = None
     
@@ -113,7 +129,7 @@ class DatasetManager:
                 sha256.update(chunk)
         return sha256.hexdigest()
 
-    def register_dataset_file(self, original_filename: str, source_path: str, behavior: str = "keep") -> dict:
+    def register_dataset_file(self, original_filename: str, source_path: str, behavior: str = "keep", user_id: str = None) -> dict:
         """
         Registers an uploaded file, checks hashes for duplicates, creates versions, and extracts headers.
         """
@@ -121,10 +137,13 @@ class DatasetManager:
             file_hash = self.calculate_file_hash(source_path)
             size_bytes = os.path.getsize(source_path)
             
-            # Check for identical duplicate
+            # Check for identical duplicate owned by this user
             conn = db.get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM datasets WHERE hash = ?", (file_hash,))
+            if user_id:
+                cursor.execute("SELECT * FROM datasets WHERE hash = ? AND (user_id = ? OR user_id IS NULL)", (file_hash, user_id))
+            else:
+                cursor.execute("SELECT * FROM datasets WHERE hash = ?", (file_hash,))
             existing = cursor.fetchone()
             
             if existing:
@@ -135,16 +154,16 @@ class DatasetManager:
                 return {
                     "status": "success",
                     "duplicate": True,
+                    "id": ds_id,
                     "dataset_id": ds_id,
                     "name": existing["name"]
                 }
+            
+            conn.close()
                 
             # If behavior == "replace", purge all previous datasets
             if behavior == "replace":
-                conn.close()
                 self.clear_all_datasets_unsafe()
-                conn = db.get_db_connection()
-                cursor = conn.cursor()
                 
             # Resolve name version
             base_name, ext = os.path.splitext(original_filename)
@@ -160,13 +179,12 @@ class DatasetManager:
             # Read only first 5 rows to extract schema without high memory footprint
             try:
                 if ext.lower() == ".csv":
-                    header_df = pd.read_csv(target_path, nrows=5)
+                    header_df = load_csv_safely(target_path, nrows=5)
                 else:
                     header_df = pd.read_excel(target_path, nrows=5)
                 cols_count = len(header_df.columns)
                 # Quick row count estimate
                 if ext.lower() == ".csv":
-                    # Fast row count
                     with open(target_path, "r", encoding="utf-8", errors="ignore") as f:
                         rows_count = sum(1 for _ in f) - 1
                 else:
@@ -183,22 +201,31 @@ class DatasetManager:
                 pass
             date_columns_json = json.dumps(date_cols)
 
-            ds_id = str(hashlib.md5(ds_name.encode()).hexdigest())
+            ds_id = str(hashlib.md5(f"{ds_name}_{user_id or ''}".encode()).hexdigest())
             
-            # Insert dataset record
+            # Insert dataset record with a fresh connection
+            conn = db.get_db_connection()
+            cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO datasets (id, name, filename, source, type, hash, rows, columns, size_bytes, is_active, status, upload_time, last_used_time, date_columns)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (ds_id, ds_name, version_filename, ext[1:].upper(), "file", file_hash, rows_count, cols_count, size_bytes, 1, "active", datetime.now(), datetime.now(), date_columns_json))
+                INSERT INTO datasets (id, name, filename, source, type, hash, rows, columns, size_bytes, is_active, status, upload_time, last_used_time, date_columns, user_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (ds_id, ds_name, version_filename, ext[1:].upper(), "file", file_hash, rows_count, cols_count, size_bytes, 1, "active", datetime.now(), datetime.now(), date_columns_json, user_id))
             
-            # Mark others inactive
-            cursor.execute("UPDATE datasets SET is_active = 0, status = 'inactive' WHERE id != ?", (ds_id,))
+            # Mark others inactive for this user
+            if user_id:
+                cursor.execute("UPDATE datasets SET is_active = 0, status = 'inactive' WHERE id != ? AND user_id = ?", (ds_id, user_id))
+            else:
+                cursor.execute("UPDATE datasets SET is_active = 0, status = 'inactive' WHERE id != ?", (ds_id,))
             conn.commit()
             conn.close()
             
             # Clear caches and load into RAM
             clear_schema_cache()
-            loaded_df = pd.read_csv(target_path) if ext.lower() == ".csv" else pd.read_excel(target_path)
+            if ext.lower() == ".csv":
+                loaded_df = load_csv_safely(target_path)
+            else:
+                loaded_df = pd.read_excel(target_path)
+                
             for col in date_cols:
                 if col in loaded_df.columns:
                     loaded_df[col] = pd.to_datetime(loaded_df[col], errors="coerce")
@@ -212,6 +239,7 @@ class DatasetManager:
             return {
                 "status": "success",
                 "duplicate": False,
+                "id": ds_id,
                 "dataset_id": ds_id,
                 "name": ds_name
             }
@@ -270,13 +298,13 @@ class DatasetManager:
                 "name": ds_name
             }
 
-    def activate_dataset_by_id(self, dataset_id: str):
+    def activate_dataset_by_id(self, dataset_id: str, user_id: str = None):
         """
         Thread-safe dataset switching with complete memory cleanup and cache resets.
         """
-        self.activate_datasets_multiple([dataset_id])
+        self.activate_datasets_multiple([dataset_id], user_id=user_id)
 
-    def activate_datasets_multiple(self, dataset_ids: list):
+    def activate_datasets_multiple(self, dataset_ids: list, user_id: str = None):
         """
         Thread-safe multi-dataset activation. Loads all specified datasets into config.datasets.
         """
@@ -295,16 +323,18 @@ class DatasetManager:
                 try: os.remove(CACHE_FILE)
                 except Exception: pass
                 
-            # Invalidate Active Conversation Summary & Context
-            cursor.execute("UPDATE conversations SET summary = NULL")
-            cursor.execute("DELETE FROM messages")
-            
-            # Switch registry statuses
-            cursor.execute("UPDATE datasets SET is_active = 0, status = 'inactive'")
+            # Switch registry statuses scoped by user
+            if user_id:
+                cursor.execute("UPDATE datasets SET is_active = 0, status = 'inactive' WHERE user_id = ?", (user_id,))
+            else:
+                cursor.execute("UPDATE datasets SET is_active = 0, status = 'inactive'")
             
             loaded_dfs = {}
             for ds_id in dataset_ids:
-                cursor.execute("SELECT * FROM datasets WHERE id = ?", (ds_id,))
+                if user_id:
+                    cursor.execute("SELECT * FROM datasets WHERE id = ? AND (user_id = ? OR user_id IS NULL)", (ds_id, user_id))
+                else:
+                    cursor.execute("SELECT * FROM datasets WHERE id = ?", (ds_id,))
                 row = cursor.fetchone()
                 if not row:
                     continue
@@ -485,40 +515,51 @@ class DatasetManager:
             if not row:
                 conn.close()
                 return
-                
-            # Delete file
-            if row["type"] == "file":
-                filepath = os.path.join(DATA_DIR, row["filename"])
-                if os.path.exists(filepath):
-                    try: os.remove(filepath)
-                    except Exception: pass
-                    
+
+            was_active = (row["is_active"] == 1)
+            filename = row.get("filename")
+            ds_type = row.get("type")
+            user_id = row.get("user_id")
+
+            # Unload from memory first if loaded
+            if row["name"] in config.datasets:
+                del config.datasets[row["name"]]
+            clear_schema_cache()
+
+            # Delete DB record explicitly FIRST and commit immediately
+            cursor.execute("DELETE FROM datasets WHERE id = ?", (dataset_id,))
+            conn.commit()
+
             # Delete preview cache
             preview_cache_path = os.path.join(PREVIEWS_DIR, f"{dataset_id}_preview.json")
             if os.path.exists(preview_cache_path):
                 try: os.remove(preview_cache_path)
                 except Exception: pass
-                
-            cursor.execute("DELETE FROM datasets WHERE id = ?", (dataset_id,))
-            
-            # Check if we need to activate another dataset
-            if row["is_active"] == 1:
-                cursor.execute("SELECT id FROM datasets LIMIT 1")
+
+            # Delete file on disk safely
+            if ds_type == "file" and filename:
+                filepath = os.path.join(DATA_DIR, filename)
+                if os.path.exists(filepath):
+                    try: os.remove(filepath)
+                    except Exception: pass
+
+            # If the deleted dataset was active, activate the next available dataset (excluding deleted ID!)
+            if was_active:
+                if user_id:
+                    cursor.execute("SELECT id FROM datasets WHERE id != ? AND (user_id = ? OR user_id IS NULL) ORDER BY upload_time DESC LIMIT 1", (dataset_id, user_id))
+                else:
+                    cursor.execute("SELECT id FROM datasets WHERE id != ? ORDER BY upload_time DESC LIMIT 1", (dataset_id,))
                 another = cursor.fetchone()
-                conn.commit()
                 conn.close()
-                
-                # Unload current from memory
-                config.datasets.clear()
-                config.database_engine = None
-                clear_schema_cache()
-                
+
                 if another:
-                    self.activate_dataset_by_id(another["id"])
+                    self.activate_dataset_by_id(another["id"], user_id=user_id)
+                else:
+                    config.datasets.clear()
+                    config.database_engine = None
             else:
-                conn.commit()
                 conn.close()
-                
+
             gc.collect()
 
     def rename_dataset(self, dataset_id: str, new_name: str):

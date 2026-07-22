@@ -19,8 +19,9 @@ Rules:
 ⚠️ COLUMN HALLUCINATION IS FORBIDDEN:
 5. COLUMN CONSTRAINT (CRITICAL): You MUST ONLY use column names that are explicitly listed in the Schema/Profile section above.
    - NEVER invent, guess, or assume column names that are not in the schema.
-   - If the question references a column that does NOT exist in the schema, do NOT guess a similar name.
-   - Instead, output exactly: result = "ERROR: Column '{{column_name}}' does not exist in the dataset. Available columns: {{list the actual schema columns}}"
+   - NOTE: General dataset terms such as 'data', 'upload', 'dataset', 'file', 'table', 'csv', 'excel', 'df', 'record', 'information', 'details' refer to the entire dataset itself and are NOT column names. Do NOT output a column non-existence error for these generic terms!
+   - If the user asks a general question about the dataset (e.g., "is data me kya hai", "what is in this dataset", "upload kiya data kis se related hai", "tell me about the data"), write Pandas code to return a summary or overview of the dataset, e.g. `result = df.describe(include='all')`.
+   - ONLY if the question references a specific non-existent column name (e.g. asking for 'employee_salary' when no such column exists), output exactly: result = "ERROR: Column '{{column_name}}' does not exist in the dataset. Available columns: {{list the actual schema columns}}"
    - Example: if asked about 'revenue' but the schema only has 'Sales', output the error string above — do NOT use 'Sales' as a substitute without explicit user instruction.
 
 6. DATE QUERYING: Do NOT call pd.to_datetime in your code. Date columns are pre-parsed into datetime64[ns] in memory. You can compare dates directly against strings, e.g. df[df['JoinDate'] < '2020-01-01']. If comparing a date column against another column or name, use datetime comparisons.

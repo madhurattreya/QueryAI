@@ -9,8 +9,18 @@ MAX_FILE_SIZE = 25 * 1024 * 1024  # 25 MB
 ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls"}
 ALLOWED_MIME_TYPES = {
     "text/csv", 
+    "application/csv",
+    "text/comma-separated-values",
+    "text/x-comma-separated-values",
+    "application/x-csv",
+    "text/plain",
     "application/vnd.ms-excel", 
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    "application/vnd.msexcel",
+    "application/excel",
+    "application/x-excel",
+    "application/x-msexcel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/octet-stream"
 }
 
 @router.post("/upload")
@@ -26,7 +36,7 @@ async def upload_file(
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Unsupported file format. Please upload CSV or Excel.")
 
-    if file.content_type not in ALLOWED_MIME_TYPES:
+    if file.content_type and file.content_type not in ALLOWED_MIME_TYPES and ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Invalid MIME type. Please upload valid CSV or Excel.")
 
     # Save to a temporary file to calculate hash & register safely
@@ -46,12 +56,25 @@ async def upload_file(
                     raise HTTPException(status_code=413, detail="File size exceeds maximum limit of 25MB.")
                 f.write(chunk)
                 
+        # Extract user_id from Authorization token
+        user_id = None
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            try:
+                token = auth_header.split(" ")[1]
+                from backend.services.security_manager import decode_jwt
+                payload = decode_jwt(token)
+                user_id = payload.get("user_id") or payload.get("username") or payload.get("sub")
+            except Exception:
+                pass
+
         # Register via DatasetManager
         manager = DatasetManager()
         reg_result = manager.register_dataset_file(
             original_filename=file.filename,
             source_path=temp_path,
-            behavior=behavior
+            behavior=behavior,
+            user_id=user_id
         )
         
         workspace_id = request.headers.get("x-workspace-id")

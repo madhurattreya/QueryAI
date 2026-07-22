@@ -146,7 +146,7 @@ def get_db_connection():
         try:
             import psycopg2
             pg_conn = psycopg2.connect(db_url)
-            pg_conn.autocommit = False
+            pg_conn.autocommit = True
             return PostgresConnWrapper(pg_conn)
         except Exception as e:
             # Fallback to local SQLite if Postgres is unreachable
@@ -164,7 +164,7 @@ def get_db_connection():
                 user=parsed.username or "root",
                 password=parsed.password or "",
                 database=parsed.path.lstrip("/"),
-                autocommit=False
+                autocommit=True
             )
             return MysqlConnWrapper(mysql_conn)
         except Exception as e:
@@ -510,7 +510,8 @@ def init_db():
         ("cache_hit_rate", "REAL DEFAULT 0.0"),
         ("charts_generated", "INTEGER DEFAULT 0"),
         ("date_columns", "TEXT"),
-        ("workspace_id", "TEXT")
+        ("workspace_id", "TEXT"),
+        ("user_id", "TEXT")
     ]:
         add_col("datasets", col, col_type)
         
@@ -591,10 +592,15 @@ def delete_conversation(conv_id: str):
     conn.commit()
     conn.close()
 
-def list_conversations(workspace_id: str = None):
+def list_conversations(workspace_id: str = None, user_id: str = None):
     conn = get_db_connection()
     cursor = conn.cursor()
-    if workspace_id:
+    if user_id:
+        if workspace_id:
+            cursor.execute("SELECT * FROM conversations WHERE (user_id = ? OR workspace_id = ?) ORDER BY updated_at DESC", (user_id, workspace_id))
+        else:
+            cursor.execute("SELECT * FROM conversations WHERE user_id = ? ORDER BY updated_at DESC", (user_id,))
+    elif workspace_id:
         cursor.execute("SELECT * FROM conversations WHERE workspace_id = ? ORDER BY updated_at DESC", (workspace_id,))
     else:
         cursor.execute("SELECT * FROM conversations ORDER BY updated_at DESC")

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { ApiClient } from "@/lib/apiClient";
 
 export default function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
@@ -64,12 +65,9 @@ export default function CommandPalette() {
 
     const delayDebounce = setTimeout(async () => {
       try {
-        const res = await fetch(`http://127.0.0.1:8000/api/search?q=${encodeURIComponent(query)}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.status === "success") {
-            setResults(data.results);
-          }
+        const data = await ApiClient.request(`/api/search?q=${encodeURIComponent(query)}`);
+        if (data.status === "success") {
+          setResults(data.results);
         }
       } catch (err) {
         console.error("Search error:", err);

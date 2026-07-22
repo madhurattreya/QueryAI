@@ -1,14 +1,36 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from sqlalchemy import inspect
 import backend.config as config
+import backend.services.history_db as db
 from backend.models.schemas import SettingsRequest
 import backend.services.formatter as formatter
 
 router = APIRouter(prefix="/api")
 
 @router.get("/status")
-def get_status():
-    sources = list(config.datasets.keys()) if config.current_source_type == "file" else []
+def get_status(request: Request):
+    user_id = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        try:
+            token = auth_header.split(" ")[1]
+            from backend.services.security_manager import decode_jwt
+            payload = decode_jwt(token)
+            user_id = payload.get("user_id")
+        except Exception:
+            pass
+
+    conn = db.get_db_connection()
+    cursor = conn.cursor()
+    if user_id:
+        cursor.execute("SELECT name FROM datasets WHERE user_id = ? AND is_active = 1", (user_id,))
+    else:
+        cursor.execute("SELECT name FROM datasets WHERE is_active = 1")
+    rows = cursor.fetchall()
+    conn.close()
+
+    loaded_files = [r["name"] for r in rows]
+
     tables = []
     if config.current_source_type == "sql" and config.database_engine:
         try:
@@ -20,7 +42,7 @@ def get_status():
     return {
         "status": "Ready",
         "current_source_type": config.current_source_type,
-        "loaded_files": list(config.datasets.keys()),
+        "loaded_files": loaded_files,
         "sql_connected": config.database_engine is not None,
         "db_flavor": config.db_flavor,
         "sql_tables": tables,

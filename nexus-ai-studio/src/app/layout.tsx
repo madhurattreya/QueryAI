@@ -20,6 +20,8 @@ const hankenGrotesk = Hanken_Grotesk({
   display: "swap",
 });
 
+import Providers from "@/context/Providers";
+
 export const metadata: Metadata = {
   title: "QueryIQ - Enterprise AI Data Analyst",
   description: "Enterprise Analytics platform - Analyze CSV, Excel, and SQL databases using AI",
@@ -42,7 +44,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-on-surface">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

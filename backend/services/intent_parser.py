@@ -47,7 +47,13 @@ class IntentParser:
                 matched_patterns=["dtypes_keywords"],
             )
 
-        if any(w in q_clean for w in ["describe dataset", "summary statistics", "stats summary", "summarize dataset", "dataset summary", "summary of dataset"]):
+        describe_phrases = [
+            "describe dataset", "summary statistics", "stats summary", "summarize dataset", "dataset summary", 
+            "summary of dataset", "is data me kya hai", "kya hai is data me", "kisliye hai ye data", 
+            "data kis se related hai", "upload kiya", "uploaded data", "about this dataset", 
+            "what is in this dataset", "what is this data", "explain dataset", "explain data", "dataset overview"
+        ]
+        if any(w in q_clean for w in describe_phrases):
             return IntentResult(
                 intent=IntentType.DESCRIBE,
                 confidence=0.95,

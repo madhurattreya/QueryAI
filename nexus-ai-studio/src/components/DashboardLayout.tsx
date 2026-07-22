@@ -6,6 +6,9 @@ import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import CommandPalette from "./CommandPalette";
 
+import { ApiClient } from "@/lib/apiClient";
+import { useAuth } from "@/context/AuthContext";
+
 interface DashboardLayoutProps {
   children: React.ReactNode;
   fullScreen?: boolean;
@@ -13,6 +16,8 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children, fullScreen = false }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [status, setStatus] = useState<any>({
     status: "Ready",
     current_source_type: "file",
@@ -25,7 +30,7 @@ export default function DashboardLayout({ children, fullScreen = false }: Dashbo
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/status");
+      const res = await ApiClient.request("/api/status");
       if (res.ok) {
         const data = await res.json();
         setStatus(data);
@@ -118,12 +123,63 @@ export default function DashboardLayout({ children, fullScreen = false }: Dashbo
             <Link href="/settings" className="text-on-surface-variant hover:text-vibrant-blue transition-colors flex items-center justify-center p-2 rounded-full hover:bg-surface-container-low">
               <span className="material-symbols-outlined text-[20px]">settings</span>
             </Link>
-            <div className="ml-2 w-8 h-8 rounded-full border border-outline-variant overflow-hidden">
-              <img
-                alt="User Profile"
-                className="w-full h-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfy7yGtB7N0lXAzEdFndpsnrCYH02g5LzMbV4YCGPFoWgiEoSUsJHuoCMck1ks03jE9j3wu4oJgHlzkTRxXu-kEEgfZEFfmeBJJzVOC4oehFH07YlpNdPdqilY88exRgC7ygbSywIKXyIH0Fg6I8gw__T0lfVPDMC-Zp1l7tDsO-5buaBVUBIeCT9bjGvF7An-um3xio4EADYtQ79LaF3K6e80b8ZNMmUub3d0j45NbaUTTnazN3zZ"
-              />
+
+            {/* Profile Avatar / User Menu */}
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-2 p-1 rounded-full border border-outline-variant/40 hover:border-vibrant-blue bg-surface-container-low transition-all cursor-pointer"
+              >
+                <div className="w-7 h-7 rounded-full bg-vibrant-blue text-white font-bold text-xs flex items-center justify-center uppercase shadow-xs">
+                  {user?.username ? user.username.charAt(0) : "A"}
+                </div>
+                <span className="hidden sm:inline text-xs font-bold text-deep-navy pr-1">
+                  {user?.username || "Admin"}
+                </span>
+                <span className="material-symbols-outlined text-xs text-on-surface-variant">
+                  expand_more
+                </span>
+              </button>
+
+              {/* User Dropdown Menu */}
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-56 bg-surface-container/95 backdrop-blur-md border border-outline-variant/40 rounded-xl shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="px-4 py-3 border-b border-outline-variant/30">
+                    <p className="text-xs font-bold text-deep-navy">{user?.username || "Admin User"}</p>
+                    <p className="text-[10px] text-on-surface-variant truncate">{user?.email || "admin@queryiq.local"}</p>
+                    <span className="mt-1.5 inline-block px-2 py-0.5 bg-primary-fixed/40 border border-vibrant-blue/20 text-[9px] font-bold text-secondary rounded uppercase">
+                      {user?.role || "Super Admin"}
+                    </span>
+                  </div>
+                  <div className="py-1">
+                    <Link
+                      href="/settings"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container-high transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-base">settings</span>
+                      Account Settings
+                    </Link>
+                    <Link
+                      href="/login"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container-high transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-base">swap_horiz</span>
+                      Switch Account / Sign Up
+                    </Link>
+                  </div>
+                  <div className="border-t border-outline-variant/30 pt-1">
+                    <button
+                      onClick={() => { setShowUserMenu(false); logout(); }}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-error hover:bg-error/10 transition-colors text-left cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-base">logout</span>
+                      Log Out
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>

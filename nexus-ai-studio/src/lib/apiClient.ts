@@ -33,7 +33,18 @@ export interface ErrorPayload {
   isRetryable: boolean;
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+let cachedBaseUrl: string | null = null;
+
+export function getBaseUrl(): string {
+  if (cachedBaseUrl) return cachedBaseUrl;
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== "undefined" && window.location.hostname) {
+    return `http://${window.location.hostname}:8000`;
+  }
+  return "http://127.0.0.1:8000";
+}
 
 export class ApiClient {
   /**
@@ -41,25 +52,43 @@ export class ApiClient {
    */
   static getUrl(path: string): string {
     const cleanPath = path.startsWith("/") ? path : `/${path}`;
-    return `${BASE_URL}${cleanPath}`;
+    return `${getBaseUrl()}${cleanPath}`;
+  }
+
+  static getToken(): string | null {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("queryiq_token") || localStorage.getItem("token");
+    }
+    return null;
+  }
+
+  static getHeaders(customHeaders: Record<string, string> = {}): Record<string, string> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...customHeaders,
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    return headers;
   }
 
   /**
-   * Safe fetch wrapper with global error handling.
+   * Safe fetch wrapper with global error handling and auto 127.0.0.1 <-> localhost fallback.
    */
   static async request(path: string, options: RequestInit = {}): Promise<Response> {
-    if (!navigator.onLine) {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
       throw new Error("NETWORK_OFFLINE");
     }
 
-    const url = this.getUrl(path);
+    const primaryUrl = this.getUrl(path);
+    const headers = this.getHeaders(options.headers as Record<string, string>);
+
     try {
-      const response = await fetch(url, {
+      const response = await fetch(primaryUrl, {
         ...options,
-        headers: {
-          "Content-Type": "application/json",
-          ...options.headers,
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -70,17 +99,45 @@ export class ApiClient {
             throw new Error(JSON.stringify(errData));
           }
         } catch (e) {
-          // If not JSON or doesn't have custom code, throw standard HTTP error code
+          if (e instanceof Error && e.message.startsWith("{")) throw e;
         }
         throw new Error(`HTTP_STATUS_${response.status}`);
       }
 
       return response;
     } catch (err: any) {
-      if (err.message === "NETWORK_OFFLINE") {
+      if (err.message === "NETWORK_OFFLINE" || (typeof err.message === "string" && (err.message.startsWith("{") || err.message.startsWith("HTTP_STATUS_")))) {
         throw err;
       }
-      if (err.message.includes("Failed to fetch") || err.message.includes("TypeError")) {
+
+      // If connection failed (e.g. Failed to fetch), attempt fallback between 127.0.0.1 and localhost
+      if (err.message.includes("Failed to fetch") || err.message.includes("TypeError") || err.name === "TypeError") {
+        const fallbackUrl = primaryUrl.includes("127.0.0.1")
+          ? primaryUrl.replace("127.0.0.1", "localhost")
+          : primaryUrl.includes("localhost")
+          ? primaryUrl.replace("localhost", "127.0.0.1")
+          : null;
+
+        if (fallbackUrl) {
+          try {
+            const fallbackResponse = await fetch(fallbackUrl, {
+              ...options,
+              headers,
+            });
+
+            if (fallbackResponse.ok) {
+              if (fallbackUrl.includes("localhost")) {
+                cachedBaseUrl = "http://localhost:8000";
+              } else if (fallbackUrl.includes("127.0.0.1")) {
+                cachedBaseUrl = "http://127.0.0.1:8000";
+              }
+              return fallbackResponse;
+            }
+          } catch (fallbackErr) {
+            // Both endpoints failed
+          }
+        }
+
         throw new Error("BACKEND_UNREACHABLE");
       }
       throw err;

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ApiClient } from "@/lib/apiClient";
 
 interface Dataset {
   id: string;
@@ -76,7 +77,7 @@ export default function ConnectPage() {
     setHealthLoading(true);
     setHealthData(null);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/datasets/health/${ds.id}`);
+      const res = await ApiClient.request(`/api/datasets/health/${ds.id}`);
       if (res.ok) {
         const data = await res.json();
         setHealthData(data);
@@ -90,7 +91,7 @@ export default function ConnectPage() {
 
   const fetchDatasets = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/datasets");
+      const res = await ApiClient.request("/api/datasets");
       if (res.ok) {
         const data = await res.json();
         setDatasets(data);
@@ -113,8 +114,15 @@ export default function ConnectPage() {
     formData.append("file", file);
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/upload?behavior=${uploadBehavior}`, {
+      const headers: Record<string, string> = { Accept: "application/json" };
+      const token = ApiClient.getToken();
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(ApiClient.getUrl(`/api/upload?behavior=${uploadBehavior}`), {
         method: "POST",
+        headers,
         body: formData
       });
       const data = await res.json();
@@ -123,10 +131,20 @@ export default function ConnectPage() {
         setFile(null);
         fetchDatasets();
       } else {
-        setUploadStatus({ type: "error", message: data.detail || "Failed to upload file." });
+        let errorMsg = "Failed to upload file.";
+        if (typeof data.detail === "string") {
+          errorMsg = data.detail;
+        } else if (Array.isArray(data.detail)) {
+          errorMsg = data.detail.map((d: any) => (typeof d === "object" && d !== null ? d.msg || JSON.stringify(d) : String(d))).join("; ");
+        } else if (typeof data.detail === "object" && data.detail !== null) {
+          errorMsg = JSON.stringify(data.detail);
+        } else if (data.message) {
+          errorMsg = typeof data.message === "string" ? data.message : JSON.stringify(data.message);
+        }
+        setUploadStatus({ type: "error", message: errorMsg });
       }
     } catch (err: any) {
-      setUploadStatus({ type: "error", message: err.message || "Network error occurred." });
+      setUploadStatus({ type: "error", message: String(err.message || err || "Network error occurred.") });
     }
   };
 
@@ -135,9 +153,8 @@ export default function ConnectPage() {
     setSqlStatus({ type: "loading", message: "Establishing cryptographic database connection..." });
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/connect-sql", {
+      const res = await ApiClient.request("/api/connect-sql", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           db_type: dbType,
           sqlite_path: sqlRequest.sqlite_path,
@@ -156,19 +173,26 @@ export default function ConnectPage() {
         });
         fetchDatasets();
       } else {
-        setSqlStatus({ type: "error", message: data.message || "Failed to connect to database." });
+        let errorMsg = "Failed to connect to database.";
+        if (typeof data.detail === "string") {
+          errorMsg = data.detail;
+        } else if (Array.isArray(data.detail)) {
+          errorMsg = data.detail.map((d: any) => (typeof d === "object" && d !== null ? d.msg || JSON.stringify(d) : String(d))).join("; ");
+        } else if (data.message) {
+          errorMsg = typeof data.message === "string" ? data.message : JSON.stringify(data.message);
+        }
+        setSqlStatus({ type: "error", message: errorMsg });
       }
     } catch (err: any) {
-      setSqlStatus({ type: "error", message: err.message || "Network connection failed." });
+      setSqlStatus({ type: "error", message: String(err.message || err || "Network connection failed.") });
     }
   };
 
   const setDatasetActive = async (id: string) => {
     setActiveMenuId(null);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/datasets/active", {
+      const res = await ApiClient.request("/api/datasets/active", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id })
       });
       if (res.ok) {
@@ -186,17 +210,19 @@ export default function ConnectPage() {
 
   const confirmDelete = async () => {
     if (!confirmDeleteId) return;
+    const targetId = confirmDeleteId;
+    setConfirmDeleteId(null);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/datasets/${confirmDeleteId}`, {
+      setDatasets((prev) => prev.filter((d) => d.id !== targetId));
+      const res = await ApiClient.request(`/api/datasets/${targetId}`, {
         method: "DELETE"
       });
       if (res.ok) {
-        fetchDatasets();
+        await fetchDatasets();
       }
     } catch (err) {
       console.error(err);
-    } finally {
-      setConfirmDeleteId(null);
+      fetchDatasets();
     }
   };
 
@@ -205,17 +231,18 @@ export default function ConnectPage() {
   };
 
   const confirmDeleteAllExec = async () => {
+    setConfirmDeleteAll(false);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/datasets", {
+      setDatasets([]);
+      const res = await ApiClient.request("/api/datasets", {
         method: "DELETE"
       });
       if (res.ok) {
-        fetchDatasets();
+        await fetchDatasets();
       }
     } catch (err) {
       console.error(err);
-    } finally {
-      setConfirmDeleteAll(false);
+      fetchDatasets();
     }
   };
 
@@ -228,9 +255,8 @@ export default function ConnectPage() {
   const saveRename = async () => {
     if (!renamingDataset || !renamingName.trim()) return;
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/datasets/rename", {
+      const res = await ApiClient.request("/api/datasets/rename", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: renamingDataset.id, name: renamingName })
       });
       if (res.ok) {
@@ -245,7 +271,7 @@ export default function ConnectPage() {
   const viewPreview = async (ds: Dataset) => {
     setActiveMenuId(null);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/datasets/preview/${ds.id}`);
+      const res = await ApiClient.request(`/api/datasets/preview/${ds.id}`);
       if (res.ok) {
         const data = await res.json();
         setPreviewData(data.result || []);
@@ -259,7 +285,7 @@ export default function ConnectPage() {
   const viewSchema = async (ds: Dataset) => {
     setActiveMenuId(null);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/datasets/schema/${ds.id}`);
+      const res = await ApiClient.request(`/api/datasets/schema/${ds.id}`);
       if (res.ok) {
         const data = await res.json();
         setSchemaCols(data.columns || []);

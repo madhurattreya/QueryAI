@@ -620,29 +620,37 @@ class QueryOrchestrator:
                     yield json.dumps({"type": "error", "status": "error", "error": err_msg, "time_taken": round(time.time() - total_start, 3)}) + "\n"
                     return
 
-                # ── Auto-detect chart type from column types ──────────────────
-                if not chart_type and parsed_query.entities.get("matched_columns"):
-                    cols = parsed_query.entities["matched_columns"]
-                    if len(cols) >= 2:
-                        col_x, col_y = cols[0], cols[1]
-                        if "date" in col_x.lower() or "joined" in col_x.lower() or "hired" in col_x.lower():
-                            chart_type = "line"
-                        elif col_x in active_df.columns and active_df[col_x].dtype == 'object':
-                            chart_type = "bar"
-                        else:
-                            chart_type = "scatter"
-                    else:
-                        chart_type = "histogram"
-                        
+                # ── Apply parsed query filters to chart dataset ──────────────────
+                chart_df = active_df.copy()
+                filter_descs = []
+                if parsed_query and getattr(parsed_query, "filters", None):
+                    for f in parsed_query.filters:
+                        col = f.get("column")
+                        op = f.get("operator", "==")
+                        val = f.get("value")
+                        if col in chart_df.columns and val is not None:
+                            if op in ("==", "equal", "="):
+                                chart_df = chart_df[chart_df[col].astype(str).str.lower() == str(val).lower()]
+                                filter_descs.append(f"{col} = '{val}'")
+                            elif op == "!=":
+                                chart_df = chart_df[chart_df[col].astype(str).str.lower() != str(val).lower()]
+                            elif op == ">":
+                                chart_df = chart_df[pd.to_numeric(chart_df[col], errors='coerce') > float(val)]
+                            elif op == "<":
+                                chart_df = chart_df[pd.to_numeric(chart_df[col], errors='coerce') < float(val)]
+                            elif op == ">=":
+                                chart_df = chart_df[pd.to_numeric(chart_df[col], errors='coerce') >= float(val)]
+                            elif op == "<=":
+                                chart_df = chart_df[pd.to_numeric(chart_df[col], errors='coerce') <= float(val)]
+
+                if chart_df.empty:
+                    chart_df = active_df.copy()
+                    filter_descs = []
+
                 # ── Column resolution with schema validation ──────────────────
-                # matched_columns may have been resolved against a stale/different schema.
-                # Always validate against the actual loaded DataFrame columns.
                 cols_from_parser = parsed_query.entities.get("matched_columns", [])
-                
-                # Filter parser columns to only those that actually exist in active_df
                 valid_cols = [c for c in cols_from_parser if c in known_cols]
                 
-                # If parser gave no valid columns, try matching question words against column names
                 if not valid_cols and known_cols:
                     q_words = set(question.lower().split())
                     for col in known_cols:
@@ -651,10 +659,28 @@ class QueryOrchestrator:
                             valid_cols.append(col)
                         if len(valid_cols) >= 3:
                             break
-                
-                col_x = valid_cols[0] if len(valid_cols) > 0 else (known_cols[0] if known_cols else None)
-                col_y = valid_cols[1] if len(valid_cols) > 1 else None
-                
+
+                # Separate valid columns into numeric vs categorical
+                numeric_cols = [c for c in valid_cols if pd.api.types.is_numeric_dtype(active_df[c])]
+                cat_cols = [c for c in valid_cols if not pd.api.types.is_numeric_dtype(active_df[c])]
+
+                if not numeric_cols:
+                    all_num = [c for c in known_cols if pd.api.types.is_numeric_dtype(active_df[c])]
+                    if all_num:
+                        rev_cols = [c for c in all_num if "revenue" in c.lower() or "sales" in c.lower() or "profit" in c.lower()]
+                        numeric_cols.append(rev_cols[0] if rev_cols else all_num[0])
+
+                if not cat_cols:
+                    filtered_cols = [f.get("column") for f in (parsed_query.filters if parsed_query and getattr(parsed_query, "filters", None) else [])]
+                    all_cat = [c for c in known_cols if not pd.api.types.is_numeric_dtype(active_df[c]) and c not in filtered_cols]
+                    if not all_cat:
+                        all_cat = [c for c in known_cols if not pd.api.types.is_numeric_dtype(active_df[c])]
+                    if all_cat:
+                        cat_cols.append(all_cat[0])
+
+                col_x = cat_cols[0] if cat_cols else (valid_cols[0] if valid_cols else (known_cols[0] if known_cols else None))
+                col_y = numeric_cols[0] if numeric_cols else (valid_cols[1] if len(valid_cols) > 1 else None)
+
                 if col_x is None:
                     yield json.dumps({
                         "type": "error", "status": "error",
@@ -662,35 +688,44 @@ class QueryOrchestrator:
                         "time_taken": round(time.time() - total_start, 3)
                     }) + "\n"
                     return
-                
+
+                # Aggregation for bar/line/pie charts
+                if not chart_type:
+                    chart_type = "bar"
+
+                if chart_type in ("bar", "line", "pie", "area") and col_x and col_y and col_x in chart_df.columns and col_y in chart_df.columns:
+                    chart_df = chart_df.groupby(col_x, as_index=False)[col_y].sum()
+                    chart_df = chart_df.sort_values(by=col_y, ascending=False).head(20)
+
                 import backend.services.chart_factory as cf
-                title = f"{chart_type.title() if chart_type else 'Scatter'} of {col_x}" + (f" vs {col_y}" if col_y else "")
-                
+                filter_suffix = f" ({', '.join(filter_descs)})" if filter_descs else ""
+                title = f"{chart_type.title()} of {col_y or col_x}" + (f" by {col_x}" if col_y else "") + filter_suffix
+
                 if chart_type == "bar":
-                    fig = cf.build_bar_chart(active_df, col_x, col_y, title)
+                    fig = cf.build_bar_chart(chart_df, col_x, col_y, title)
                 elif chart_type == "line":
-                    fig = cf.build_line_chart(active_df, col_x, col_y, title)
+                    fig = cf.build_line_chart(chart_df, col_x, col_y, title)
                 elif chart_type == "box":
-                    fig = cf.build_box_plot(active_df, col_x, col_y, title)
+                    fig = cf.build_box_plot(chart_df, col_x, col_y, title)
                 elif chart_type == "histogram":
-                    fig = cf.build_histogram(active_df, col_x, title)
+                    fig = cf.build_histogram(chart_df, col_x, title)
                 elif chart_type == "pie":
-                    fig = cf.build_pie_chart(active_df, col_x, col_y, title)
+                    fig = cf.build_pie_chart(chart_df, col_x, col_y, title)
                 elif chart_type == "heatmap":
-                    fig = cf.build_heatmap(active_df, title=title)
+                    fig = cf.build_heatmap(chart_df, title=title)
                 elif chart_type == "area":
-                    fig = cf.build_area_chart(active_df, col_x, col_y, title)
+                    fig = cf.build_area_chart(chart_df, col_x, col_y, title)
                 elif chart_type == "treemap":
-                    fig = cf.build_treemap(active_df, [col_x], col_y, title)
+                    fig = cf.build_treemap(chart_df, [col_x], col_y, title)
                 else:
-                    fig = cf.build_scatter_chart(active_df, col_x, col_y or col_x, title)
-                    
+                    fig = cf.build_scatter_chart(chart_df, col_x, col_y or col_x, title)
+
                 cf.create_chart_assets(fig, CHARTS_DIR, chart_uuid)
                 result = "Chart saved to chart.png and chart.html"
-                code = f"fig = px.{chart_type or 'scatter'}(df, x='{col_x}'" + (f", y='{col_y}'" if col_y else "") + f", title='{title}')\ncf.create_chart_assets(fig, CHARTS_DIR, '{chart_uuid}')"
+                code = f"fig = px.{chart_type or 'bar'}(df, x='{col_x}'" + (f", y='{col_y}'" if col_y else "") + f", title='{title}')\ncf.create_chart_assets(fig, CHARTS_DIR, '{chart_uuid}')"
                 context.code = code
                 context.raw_result = pd.DataFrame([{"Result": result}])
-                context.explanation = f"Generated a predefined {chart_type or 'scatter'} chart for {col_x}" + (f" vs {col_y}." if col_y else ".")
+                context.explanation = f"Generated a predefined {chart_type or 'bar'} chart for {col_y or col_x}" + (f" by {col_x}" if col_y else "") + (f" filtered on {', '.join(filter_descs)}." if filter_descs else ".")
                 active_chart_id = chart_uuid
                 timings["Chart generation"] = time.time() - t_start_chart
 

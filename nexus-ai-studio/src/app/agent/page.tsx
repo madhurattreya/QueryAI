@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ApiClient } from "@/lib/apiClient";
 
 interface QueryTrace {
   Question: string;
@@ -88,24 +89,24 @@ export default function AgentArchitecturePage() {
   useEffect(() => {
     const loadTraceData = async () => {
       try {
-        const histRes = await fetch("http://127.0.0.1:8000/api/history");
+        const histRes = await ApiClient.request("/api/conversations");
         if (histRes.ok) {
           const histData = await histRes.json();
           const mapped = histData.map((h: any) => ({
-            Question: h.Question,
-            Timestamp: h.Timestamp,
-            "Time Taken (sec)": h["Time Taken (sec)"] || 0.05,
-            "Rows Returned": h["Rows Returned"] || 0,
-            "Engine Used": h.engine_used || (h["Rows Returned"] > 0 ? "deterministic" : "llm"),
-            "Code Generated": h.generated_code
+            Question: h.title || h.summary || "Analytics Query",
+            Timestamp: h.updated_at || h.created_at,
+            "Time Taken (sec)": 0.05,
+            "Rows Returned": 0,
+            "Engine Used": "hybrid",
+            "Code Generated": ""
           }));
-          setTraces(mapped.reverse().slice(0, 10)); // Show last 10 traces
+          setTraces(mapped.slice(0, 10)); // Show last 10 traces
           if (mapped.length > 0) {
             setSelectedTrace(mapped[0]);
           }
         }
 
-        const statRes = await fetch("http://127.0.0.1:8000/api/status");
+        const statRes = await ApiClient.request("/api/status");
         if (statRes.ok) {
           const statData = await statRes.json();
           setStatus(statData);

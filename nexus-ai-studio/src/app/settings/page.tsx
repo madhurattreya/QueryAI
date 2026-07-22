@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ApiClient } from "@/lib/apiClient";
 
 export default function SettingsPage() {
   const [model, setModel] = useState("qwen2.5:7b");
@@ -20,7 +21,7 @@ export default function SettingsPage() {
     // Load initial settings
     const loadSettings = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/status");
+        const res = await ApiClient.request("/api/status");
         if (res.ok) {
           const data = await res.json();
           setHasGeminiKey(data.has_gemini_key);
@@ -43,9 +44,8 @@ export default function SettingsPage() {
     e.preventDefault();
     setSaveStatus({ type: "idle", message: "" });
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/settings", {
+      const res = await ApiClient.request("/api/settings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model,
           explain_mode: explainMode,

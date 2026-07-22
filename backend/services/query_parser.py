@@ -436,11 +436,34 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
 
     q_clean = q_norm
 
+    # ── Detect Negated/Excluded Columns ───────────────────────────────────────
+    excluded_cols = set()
+    negation_patterns = [
+        r'\b(?:not|no|without|except|don\'t use|dont use|exclude)\s+(?:the\s+)?([a-z0-9_]+)\b',
+        r'\b([a-z0-9_]+)\s+not\b'
+    ]
+    for neg_pat in negation_patterns:
+        for m in re.finditer(neg_pat, q_norm):
+            matched_word = m.group(1).lower()
+            for c in known_cols:
+                c_low = c.lower()
+                if c_low == matched_word or c_low.replace("_", " ") == matched_word or c_low.replace("_", "") == matched_word:
+                    excluded_cols.add(c)
+
     # Relevance scoring function for a column against a query term or the general query
     def compute_column_score(col_name: str, op: Optional[str] = None) -> float:
+        if col_name in excluded_cols:
+            return 0.0
+
         score = 0.0
         col_lower = col_name.lower()
-        
+        col_clean = col_lower.replace("_", " ")
+
+        # Give strong priority if the query matches the column's actual name vs a generic synonym
+        if re.search(r'\b' + re.escape(col_lower) + r'\b', q_rewritten) or \
+           re.search(r'\b' + re.escape(col_clean) + r'\b', q_rewritten):
+            score += 100.0
+
         syns = [col_lower]
         if col_name in semantic_layer:
             syns.extend([s.lower() for s in semantic_layer[col_name].get("synonyms", []) if isinstance(s, str)])
@@ -451,13 +474,21 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
             
         matched = False
         best_match_syn_len = 0
+        is_exact_token_match = False
         for syn in syns:
-            if re.search(r'\b' + re.escape(syn) + r'\b', q_rewritten) or re.search(r'\b' + re.escape(syn.replace(" ", "_")) + r'\b', q_rewritten):
+            syn_clean = syn.replace("_", " ")
+            syn_under = syn.replace(" ", "_")
+            if re.search(r'\b' + re.escape(syn) + r'\b', q_rewritten) or \
+               re.search(r'\b' + re.escape(syn_clean) + r'\b', q_rewritten) or \
+               re.search(r'\b' + re.escape(syn_under) + r'\b', q_rewritten):
                 matched = True
+                is_exact_token_match = True
                 best_match_syn_len = max(best_match_syn_len, len(syn))
                 
         if matched:
             score += 50.0 + min(50.0, best_match_syn_len * 3.0)
+            if is_exact_token_match:
+                score += 30.0  # Exact token match boost
         else:
             for syn in syns:
                 if syn in q_rewritten:
@@ -562,7 +593,7 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
     predict_keywords = {"predict", "forecast", "extrapolate", "growth", "prediction"}
     has_predict = any(kw in q_rewritten for kw in predict_keywords)
     
-    insight_keywords = {"insight", "hidden", "analysis", "trend", "pattern", "business", "key finding", "observation", "summary"}
+    insight_keywords = {"insight", "hidden", "analysis", "trend", "pattern", "business", "key finding", "observation", "summary", "kya hai", "kisliye", "related", "upload", "overview", "describe", "about"}
     has_insight = any(kw in q_rewritten for kw in insight_keywords)
     
     meta_keywords = {"how many tables", "show tables", "columns of", "describe table", "list tables", "schema", "dataset info"}
@@ -586,8 +617,11 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
         top_col, top_score = sorted_matched[0]
         second_col, second_score = sorted_matched[1]
         
+        top_has_exact = any(re.search(r'\b' + re.escape(s) + r'\b', q_rewritten) or re.search(r'\b' + re.escape(s.replace("_", " ")) + r'\b', q_rewritten) for s in [top_col.lower()])
+        sec_has_exact = any(re.search(r'\b' + re.escape(s) + r'\b', q_rewritten) or re.search(r'\b' + re.escape(s.replace("_", " ")) + r'\b', q_rewritten) for s in [second_col.lower()])
+
         if abs(top_score - second_score) < 15.0 and top_score > 40.0:
-            if not (top_col.lower() in q_rewritten and second_col.lower() in q_rewritten):
+            if not (top_col.lower() in q_rewritten and second_col.lower() in q_rewritten) and not (top_has_exact and not sec_has_exact):
                 top_sem = schema_index.get_column_semantic_type(top_col) if schema_index else None
                 sec_sem = schema_index.get_column_semantic_type(second_col) if schema_index else None
                 if top_sem == sec_sem:

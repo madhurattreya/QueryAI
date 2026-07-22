@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ApiClient } from "@/lib/apiClient";
 
 export default function ExplorerPage() {
   const [datasets, setDatasets] = useState<any[]>([]);
@@ -14,7 +15,7 @@ export default function ExplorerPage() {
 
   const fetchDatasets = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/datasets");
+      const res = await ApiClient.request("/api/datasets");
       if (res.ok) {
         const data = await res.json();
         setDatasets(data);
@@ -32,9 +33,8 @@ export default function ExplorerPage() {
     setLoadingPreview(true);
     try {
       const question = `Show first 10 rows of dataset ${datasetName}`;
-      const res = await fetch("http://127.0.0.1:8000/api/query", {
+      const res = await ApiClient.request("/api/query", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question })
       });
       const data = await res.json();
@@ -60,7 +60,7 @@ export default function ExplorerPage() {
       // Fetch columns schema dynamically
       const fetchSchema = async () => {
         try {
-          const res = await fetch(`http://127.0.0.1:8000/api/datasets/schema/${selectedDataset.id}`);
+          const res = await ApiClient.request(`/api/datasets/schema/${selectedDataset.id}`);
           if (res.ok) {
             const data = await res.json();
             setColumns(data.columns || []);

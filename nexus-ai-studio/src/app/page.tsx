@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ApiClient } from "@/lib/apiClient";
 
 export default function WelcomePage() {
   const [history, setHistory] = useState<any[]>([]);
@@ -11,13 +12,13 @@ export default function WelcomePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const histRes = await fetch("http://127.0.0.1:8000/api/history");
+        const histRes = await ApiClient.request("/api/conversations");
         if (histRes.ok) {
           const histData = await histRes.json();
           setHistory(histData.slice(-3).reverse()); // Show last 3
         }
         
-        const statRes = await fetch("http://127.0.0.1:8000/api/status");
+        const statRes = await ApiClient.request("/api/status");
         if (statRes.ok) {
           const statData = await statRes.json();
           setStatus(statData);

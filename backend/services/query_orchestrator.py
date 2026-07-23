@@ -1234,10 +1234,47 @@ class QueryOrchestrator:
                         context.code = code
                         run_sandbox()
                     except Exception as final_err:
-                        context.error = f"Column reference error: {str(primary_err)}. Retry correction failed: {str(final_err)}"
-                        yield json.dumps({"type": "error", "status": "error", "error": "The generated query referenced a column that does not exist.", "time_taken": round(time.time() - total_start, 3)}) + "\n"
-                        logger_service.log_telemetry({"status": "error", "conversation_id": conversation_id, "engine_used": engine_type, "execution_time": time.time() - total_start, "error": context.error})
-                        return
+                        if engine_type == "visualization" and config.datasets:
+                            try:
+                                active_df_name = list(config.datasets.keys())[0]
+                                active_df = config.datasets[active_df_name]
+                                known_cols = active_df.columns.tolist()
+                                numeric_cols = [c for c in known_cols if pd.api.types.is_numeric_dtype(active_df[c])]
+                                cat_cols = [c for c in known_cols if not pd.api.types.is_numeric_dtype(active_df[c])]
+                                col_x = cat_cols[0] if cat_cols else (known_cols[0] if known_cols else "index")
+                                col_y = numeric_cols[0] if numeric_cols else (known_cols[1] if len(known_cols) > 1 else col_x)
+                                chart_type = (parsed_query.chart_type if parsed_query else None) or "pie" if "pie" in question.lower() else "bar"
+                                import backend.services.chart_factory as cf
+                                title = f"{chart_type.title()} chart of {col_y} by {col_x}"
+                                if col_x in active_df.columns and col_y in active_df.columns and pd.api.types.is_numeric_dtype(active_df[col_y]):
+                                    chart_df = active_df.groupby(col_x, as_index=False)[col_y].sum().head(20)
+                                else:
+                                    chart_df = active_df.head(20)
+                                if chart_type == "pie":
+                                    fig = cf.build_pie_chart(chart_df, col_x, col_y, title)
+                                elif chart_type == "line":
+                                    fig = cf.build_line_chart(chart_df, col_x, col_y, title)
+                                else:
+                                    fig = cf.build_bar_chart(chart_df, col_x, col_y, title)
+                                cf.create_chart_assets(fig, CHARTS_DIR, chart_uuid)
+                                result = "Chart saved to chart.png and chart.html"
+                                code = f"# Resilient Visualization Fallback\nfig = px.{chart_type}(df, x='{col_x}', y='{col_y}', title='{title}')"
+                                context.code = code
+                                context.raw_result = pd.DataFrame([{"Result": result}])
+                                context.explanation = f"Generated a {chart_type} chart for **{col_y}** by **{col_x}**."
+                                active_chart_id = chart_uuid
+                            except Exception:
+                                col_info = f" Available columns: {', '.join(all_columns[:8])}" if all_columns else ""
+                                context.error = f"Column reference error: {str(primary_err)}. Retry correction failed: {str(final_err)}"
+                                yield json.dumps({"type": "error", "status": "error", "error": f"The generated query referenced a column that does not exist.{col_info}", "time_taken": round(time.time() - total_start, 3)}) + "\n"
+                                logger_service.log_telemetry({"status": "error", "conversation_id": conversation_id, "engine_used": engine_type, "execution_time": time.time() - total_start, "error": context.error})
+                                return
+                        else:
+                            col_info = f" Available columns: {', '.join(all_columns[:8])}" if all_columns else ""
+                            context.error = f"Column reference error: {str(primary_err)}. Retry correction failed: {str(final_err)}"
+                            yield json.dumps({"type": "error", "status": "error", "error": f"The generated query referenced a column that does not exist.{col_info}", "time_taken": round(time.time() - total_start, 3)}) + "\n"
+                            logger_service.log_telemetry({"status": "error", "conversation_id": conversation_id, "engine_used": engine_type, "execution_time": time.time() - total_start, "error": context.error})
+                            return
                     timings["Generator"] += (time.time() - t_llm_start)
 
             timings["Execution"] = time.time() - t_start

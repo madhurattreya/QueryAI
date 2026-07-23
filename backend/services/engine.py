@@ -149,8 +149,11 @@ def _normalize_col(name: str) -> str:
 def fuzzy_find_columns(target: str, available_cols: list) -> str | None:
     """
     Finds a matching column from available columns using fuzzy string matching.
-    Handles spaces vs underscores (e.g. 'OPERATING SYSTEM' == 'Operating_System').
+    Handles case variations, spaces vs underscores, and token overlaps.
     """
+    if not target or not available_cols:
+        return None
+
     # 1. Case-insensitive exact match
     for col in available_cols:
         if col.lower() == target.lower():
@@ -162,9 +165,22 @@ def fuzzy_find_columns(target: str, available_cols: list) -> str | None:
         if _normalize_col(col) == target_norm:
             return col
 
-    # 3. difflib fuzzy match on normalized names
+    # 3. Word token overlap match (e.g. 'sales' matching 'Total Sales' or 'category' matching 'Product Category')
+    target_tokens = set(re.findall(r'\w+', target.lower()))
+    best_overlap_col = None
+    max_overlap = 0
+    for col in available_cols:
+        col_tokens = set(re.findall(r'\w+', col.lower()))
+        overlap = len(target_tokens & col_tokens)
+        if overlap > max_overlap:
+            max_overlap = overlap
+            best_overlap_col = col
+    if max_overlap >= 1 and target_tokens:
+        return best_overlap_col
+
+    # 4. difflib fuzzy match on normalized names
     norm_map = {_normalize_col(col): col for col in available_cols}
-    matches = difflib.get_close_matches(target_norm, list(norm_map.keys()), n=1, cutoff=0.55)
+    matches = difflib.get_close_matches(target_norm, list(norm_map.keys()), n=1, cutoff=0.45)
     if matches:
         return norm_map[matches[0]]
 
@@ -173,18 +189,32 @@ def fuzzy_find_columns(target: str, available_cols: list) -> str | None:
 
 def build_safe_column_aliases(df: "pd.DataFrame") -> dict:
     """
-    For every column that contains spaces, create an alias key using underscores
-    (e.g. 'OPERATING SYSTEM' -> 'OPERATING_SYSTEM') so LLM-generated code that
-    uses either form will work without error.
-    Returns a dict of extra {alias: df[original_col]} entries to inject into locals.
+    Ensures df has case-insensitive, space/underscore alias columns injected dynamically,
+    so that df['category'], df['sales'], df['operating_system'] etc. work without KeyError.
+    Returns a dict of extra {alias: df[original_col]} entries for execution scope.
     """
     aliases = {}
-    for col in df.columns:
-        safe = col.replace(' ', '_')
-        if safe != col:
-            aliases[safe] = df[col]
-            aliases[safe.upper()] = df[col]
-            aliases[safe.lower()] = df[col]
+    if df is None or not isinstance(df, pd.DataFrame):
+        return aliases
+
+    existing_cols = list(df.columns)
+    for col in existing_cols:
+        col_str = str(col)
+        variations = {
+            col_str.lower(),
+            col_str.upper(),
+            col_str.replace(' ', '_'),
+            col_str.replace('_', ' '),
+            col_str.lower().replace(' ', '_'),
+            col_str.lower().replace('_', ' '),
+        }
+        for var in variations:
+            if var not in df.columns:
+                try:
+                    df[var] = df[col]
+                except Exception:
+                    pass
+            aliases[var] = df[col]
     return aliases
 
 def attempt_fast_correction(code: str, error: Exception, available_cols: list) -> str | None:
@@ -227,7 +257,7 @@ def attempt_fast_correction(code: str, error: Exception, available_cols: list) -
                 closest = col
                 break
 
-    # 3. Fallback to fuzzy match (handles spaces vs underscores)
+    # 3. Fallback to fuzzy match (handles spaces vs underscores & token overlaps)
     if not closest:
         closest = fuzzy_find_columns(missing_col, available_cols)
 

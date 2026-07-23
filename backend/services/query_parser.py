@@ -31,6 +31,11 @@ class ParsedQuery:
 
 # Typo, abbreviation, and Hinglish mapping
 COMMON_REWRITES = {
+    r"\bcreata\b": "create",
+    r"\bcreat\b": "create",
+    r"\bchrt\b": "chart",
+    r"\bgraf\b": "graph",
+    r"\bpi\b": "pie",
     r"\bprofitt\b": "profit",
     r"\bsalry\b": "salary",
     r"\bsale\b": "sales",
@@ -882,7 +887,7 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
 
     # Group By Detection (English and Hindi variants)
     groupby_cols = []
-    groupby_indicators = ["by", "per", "each", "grouped by", "according to", "ke hisaab se", "wise"]
+    groupby_indicators = ["by", "per", "each", "in each", "within each", "for each", "across", "grouped by", "according to", "ke hisaab se", "wise"]
     if any(ind in q_rewritten for ind in groupby_indicators) or "wise" in q_rewritten:
         for col in known_cols:
             col_l = col.lower()
@@ -897,6 +902,11 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
                     r"\bby\s+" + re.escape(syn) + r"\b",
                     r"\bper\s+" + re.escape(syn) + r"\b",
                     r"\beach\s+" + re.escape(syn) + r"\b",
+                    r"\bin\s+each\s+" + re.escape(syn) + r"\b",
+                    r"\bwithin\s+each\s+" + re.escape(syn) + r"\b",
+                    r"\bfor\s+each\s+" + re.escape(syn) + r"\b",
+                    r"\bacross\s+each\s+" + re.escape(syn) + r"\b",
+                    r"\bacross\s+" + re.escape(syn) + r"\b",
                     r"\bgrouped\s+by\s+" + re.escape(syn) + r"\b",
                     r"\baccording\s+to\s+" + re.escape(syn) + r"\b",
                     r"\b" + re.escape(syn) + r"\s+wise\b",
@@ -909,15 +919,34 @@ def parse_question(question: str, active_df: pd.DataFrame = None, active_df_name
                     break
 
     # Smart Aggregation Planner (Implicit groupby + measure + rank detection)
-    # E.g. "Which city has most profit", "highest sales region"
-    if active_df is not None and not groupby_cols:
-        # Find if we have a categorical column AND a measure column
-        cat_cols = [c for c in matched_columns if active_df[c].dtype == 'object' or isinstance(active_df[c].dtype, pd.CategoricalDtype)]
-        measure_cols = [c for c in matched_columns if pd.api.types.is_numeric_dtype(active_df[c])]
+    # E.g. "Which city has most profit", "highest sales region", "which salesperson achieved highest profit in each region"
+    if active_df is not None:
+        cat_cols = [c for c in known_cols if active_df[c].dtype == 'object' or isinstance(active_df[c].dtype, pd.CategoricalDtype)]
+        measure_cols = [c for c in known_cols if pd.api.types.is_numeric_dtype(active_df[c])]
         
-        # Check superlatives / extreme intents
+        # Check entity mentions in question like salesperson, customer, product, region, month, year, quarter
+        entity_keywords = {
+            "salesperson": ["salesperson", "sales rep", "rep", "employee", "seller", "agent"],
+            "product": ["product", "product name", "item"],
+            "customer": ["customer", "customer name", "client", "buyer"],
+            "region": ["region", "area", "zone"],
+            "state": ["state", "province"],
+            "category": ["category", "product category"],
+            "month": ["month", "monthly"],
+            "year": ["year", "annual"],
+            "quarter": ["quarter", "quarterly"]
+        }
+        
+        for ent_type, kw_list in entity_keywords.items():
+            if any(kw in q_rewritten for kw in kw_list):
+                for col in cat_cols:
+                    col_low = col.lower()
+                    if any(kw in col_low for kw in kw_list) or col_low in kw_list:
+                        if col not in groupby_cols:
+                            groupby_cols.append(col)
+
         has_extreme = any(ex in q_rewritten for ex in ["most", "least", "highest", "lowest", "best", "worst", "top", "bottom"])
-        if cat_cols and measure_cols and (has_extreme or aggregations):
+        if cat_cols and measure_cols and (has_extreme or aggregations) and not groupby_cols:
             groupby_cols = [cat_cols[0]]
             if not aggregations:
                 # Default sum aggregation for metrics

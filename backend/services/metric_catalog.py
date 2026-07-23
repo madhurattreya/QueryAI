@@ -154,6 +154,21 @@ class MetricCatalog:
                     expression=f"SUM({rev_col}) / COUNT(DISTINCT {cust_col})"
                 )
 
+        if "revenue" in resolved_classes and "profit" in resolved_classes:
+            rev_col = resolved_classes["revenue"]
+            prof_col = resolved_classes["profit"]
+            pm_formula = BaseMetricFormula(
+                column=prof_col,
+                operator="expression",
+                display_name="Profit Margin",
+                expression=f"SUM({prof_col}) / SUM({rev_col})"
+            )
+            self.catalog["profit margin"] = pm_formula
+            self.catalog["profit margin (profit ÷ sales)"] = pm_formula
+            self.catalog["profit ÷ sales"] = pm_formula
+            self.catalog["profit / sales"] = pm_formula
+            self.catalog["margin"] = pm_formula
+
         # 4. Merge semantic model custom calculations from SQLite Semantic Metadata Store
         try:
             from backend.services.semantic_model import SemanticModelManager

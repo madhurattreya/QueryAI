@@ -130,63 +130,75 @@ class IntentParser:
             words = q_clean.split()
             cols = self.schema_index.get_all_columns()
             
-            # Simple average/mean match
-            avg_keywords = ["average", "avg", "mean", "avg of", "mean of", "average of"]
-            for kw in avg_keywords:
-                if kw in q_clean:
-                    for col in cols:
-                        if col.lower() in q_clean and self.schema_index.is_numeric(col):
-                            return IntentResult(
-                                intent=IntentType.AVERAGE,
-                                confidence=0.85,
-                                is_deterministic=True,
-                                params={"column": col},
-                                matched_patterns=["average_col_match"],
-                            )
+            # Skip simple scalar intents if question contains group-by, dimension, ratio, or analytical indicators
+            has_complex_analytical_intent = any(w in q_clean for w in [
+                "each", "in each", "for each", "within each", "across", "per", "by", "wise", "monthly", "quarterly", "year", "month", "quarter",
+                "rank", "compare", "pivot", "dashboard", "trend", "margin", "contribution", "percentage", "percent", "%",
+                "ratio", "divide", "divided", "÷", "versus", "vs"
+            ]) or any(qw in q_clean for qw in [
+                "which salesperson", "which month", "which product", "which customer", "which region",
+                "which city", "which state", "which category", "who", "what salesperson", "what month",
+                "what product", "what customer", "what region", "what city", "what category"
+            ])
 
-            # Simple sum/total match
-            sum_keywords = ["sum", "total", "sum of", "total of", "summation of"]
-            for kw in sum_keywords:
-                if kw in q_clean:
-                    for col in cols:
-                        if col.lower() in q_clean and self.schema_index.is_numeric(col):
-                            # Ensure we don't confuse with count/average keywords in same query
-                            if not any(w in q_clean for w in ["avg", "mean", "average", "count", "how many"]):
+            if not has_complex_analytical_intent:
+                # Simple average/mean match
+                avg_keywords = ["average", "avg", "mean", "avg of", "mean of", "average of"]
+                for kw in avg_keywords:
+                    if kw in q_clean:
+                        for col in cols:
+                            if col.lower() in q_clean and self.schema_index.is_numeric(col):
                                 return IntentResult(
-                                    intent=IntentType.SUM,
+                                    intent=IntentType.AVERAGE,
                                     confidence=0.85,
                                     is_deterministic=True,
                                     params={"column": col},
-                                    matched_patterns=["sum_col_match"],
+                                    matched_patterns=["average_col_match"],
                                 )
 
-            # Simple min match
-            min_keywords = ["minimum", "min", "lowest", "smallest", "min of", "minimum of"]
-            for kw in min_keywords:
-                if kw in q_clean:
-                    for col in cols:
-                        if col.lower() in q_clean:
-                            return IntentResult(
-                                intent=IntentType.MIN_VALUE,
-                                confidence=0.85,
-                                is_deterministic=True,
-                                params={"column": col},
-                                matched_patterns=["min_col_match"],
-                            )
+                # Simple sum/total match
+                sum_keywords = ["sum", "total", "sum of", "total of", "summation of"]
+                for kw in sum_keywords:
+                    if kw in q_clean:
+                        for col in cols:
+                            if col.lower() in q_clean and self.schema_index.is_numeric(col):
+                                # Ensure we don't confuse with count/average keywords in same query
+                                if not any(w in q_clean for w in ["avg", "mean", "average", "count", "how many"]):
+                                    return IntentResult(
+                                        intent=IntentType.SUM,
+                                        confidence=0.85,
+                                        is_deterministic=True,
+                                        params={"column": col},
+                                        matched_patterns=["sum_col_match"],
+                                    )
 
-            # Simple max match
-            max_keywords = ["maximum", "max", "highest", "largest", "max of", "maximum of"]
-            for kw in max_keywords:
-                if kw in q_clean:
-                    for col in cols:
-                        if col.lower() in q_clean:
-                            return IntentResult(
-                                intent=IntentType.MAX_VALUE,
-                                confidence=0.85,
-                                is_deterministic=True,
-                                params={"column": col},
-                                matched_patterns=["max_col_match"],
-                            )
+                # Simple min match
+                min_keywords = ["minimum", "min", "lowest", "smallest", "min of", "minimum of"]
+                for kw in min_keywords:
+                    if kw in q_clean:
+                        for col in cols:
+                            if col.lower() in q_clean:
+                                return IntentResult(
+                                    intent=IntentType.MIN_VALUE,
+                                    confidence=0.85,
+                                    is_deterministic=True,
+                                    params={"column": col},
+                                    matched_patterns=["min_col_match"],
+                                )
+
+                # Simple max match
+                max_keywords = ["maximum", "max", "highest", "largest", "max of", "maximum of"]
+                for kw in max_keywords:
+                    if kw in q_clean:
+                        for col in cols:
+                            if col.lower() in q_clean:
+                                return IntentResult(
+                                    intent=IntentType.MAX_VALUE,
+                                    confidence=0.85,
+                                    is_deterministic=True,
+                                    params={"column": col},
+                                    matched_patterns=["max_col_match"],
+                                )
 
             # Simple unique/distinct match
             uniq_keywords = ["unique", "distinct", "different", "unique values of", "distinct values of", "which unique", "how many and which", "konse", "kaunse"]

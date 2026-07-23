@@ -400,6 +400,7 @@ class AIDashboardService:
     def compute_live_dashboard_data(self, layout: dict = None) -> dict:
         """
         Calculates 100% real live metric aggregations and chart group data directly from the active loaded dataset.
+        Dynamically detects dataset domain (Sports, Sales, HR, Finance, General) and builds relevant KPIs and charts.
         """
         import pandas as pd
         from backend.services.dataset_manager import DatasetManager
@@ -414,74 +415,232 @@ class AIDashboardService:
         df = config.datasets[ds_name]
         if df is None or df.empty:
             return {"status": "empty", "dataset_name": ds_name}
-            
-        # Detect numeric and categorical columns dynamically
-        cols = {c.lower(): c for c in df.columns}
-        
-        sales_col = cols.get("sales") or cols.get("revenue") or cols.get("total_sales") or cols.get("amount")
-        profit_col = cols.get("profit") or cols.get("margin")
-        region_col = cols.get("region") or cols.get("area") or cols.get("zone") or cols.get("state")
-        category_col = cols.get("category") or cols.get("product_category") or cols.get("segment") or cols.get("type")
-        salesperson_col = cols.get("salesperson") or cols.get("sales_rep") or cols.get("employee") or cols.get("agent")
-        month_col = cols.get("month") or cols.get("orderdate") or cols.get("date")
 
-        # 1. Compute KPIs
-        tot_sales = float(pd.to_numeric(df[sales_col], errors="coerce").sum()) if sales_col else 0.0
-        tot_profit = float(pd.to_numeric(df[profit_col], errors="coerce").sum()) if profit_col else 0.0
-        tot_orders = int(len(df))
-        avg_val = float(tot_sales / tot_orders) if tot_orders > 0 else 0.0
+        cols_lower = {c.lower(): c for c in df.columns}
 
-        # 2. Compute Regional Breakdown
-        region_dict = {}
-        if region_col and sales_col:
-            try:
+        # ─── DOMAIN DETECTION ──────────────────────────────────────────────────
+        is_sports = any(k in cols_lower for k in [
+            "player_name", "jersey_number", "goals", "assists", "shots", "position",
+            "stadium", "match_result", "tournament_rating", "fifa", "player_rating", "player_id"
+        ])
+        is_hr = any(k in cols_lower for k in [
+            "employee", "employee_id", "salary", "designation", "hire_date", "performance_rating", "experience", "department"
+        ])
+        is_sales = any(k in cols_lower for k in [
+            "sales", "revenue", "order_id", "profit", "orderdate", "unitprice", "discount"
+        ])
+
+        if is_sports:
+            domain_type = "sports"
+        elif is_hr:
+            domain_type = "hr"
+        elif is_sales:
+            domain_type = "sales"
+        else:
+            domain_type = "general"
+
+        # ─── 1. SPORTS DOMAIN COMPUTATION ─────────────────────────────────────
+        if domain_type == "sports":
+            player_col = cols_lower.get("player_name") or cols_lower.get("player_id")
+            team_col = cols_lower.get("team") or cols_lower.get("nationality") or cols_lower.get("club_name") or cols_lower.get("country")
+            position_col = cols_lower.get("position")
+            goals_col = cols_lower.get("goals") or cols_lower.get("total_goals_tournament") or cols_lower.get("points") or cols_lower.get("score")
+            rating_col = cols_lower.get("player_rating") or cols_lower.get("tournament_rating") or cols_lower.get("performance_score")
+            stage_col = cols_lower.get("tournament_stage") or cols_lower.get("match_date") or cols_lower.get("city") or cols_lower.get("stadium")
+
+            tot_records = int(len(df))
+            tot_goals = int(pd.to_numeric(df[goals_col], errors="coerce").sum()) if goals_col else 0
+            avg_rating = round(float(pd.to_numeric(df[rating_col], errors="coerce").mean()), 2) if rating_col else 0.0
+            tot_teams = int(df[team_col].nunique()) if team_col else 0
+
+            # Chart 1: Goals by Team
+            team_dict = {}
+            if team_col and goals_col:
+                try:
+                    gdf = df.groupby(team_col)[goals_col].apply(lambda x: pd.to_numeric(x, errors="coerce").sum()).nlargest(6)
+                    team_dict = {str(k): float(v) for k, v in gdf.items() if pd.notnull(v)}
+                except Exception:
+                    pass
+
+            # Chart 2: Position Distribution
+            position_dict = {}
+            if position_col:
+                try:
+                    position_dict = {str(k): int(v) for k, v in df[position_col].value_counts().items()}
+                except Exception:
+                    pass
+
+            # Chart 3: Top 5 Goal Scorers
+            entity_dict = {}
+            if player_col and goals_col:
+                try:
+                    gdf = df.groupby(player_col)[goals_col].apply(lambda x: pd.to_numeric(x, errors="coerce").sum()).nlargest(5)
+                    entity_dict = {str(k): float(v) for k, v in gdf.items() if pd.notnull(v)}
+                except Exception:
+                    pass
+
+            # Chart 4: Stage/Date Trend
+            stage_dict = {}
+            if stage_col and goals_col:
+                try:
+                    gdf = df.groupby(stage_col)[goals_col].apply(lambda x: pd.to_numeric(x, errors="coerce").sum()).nlargest(12)
+                    stage_dict = {str(k): float(v) for k, v in gdf.items() if pd.notnull(v)}
+                except Exception:
+                    pass
+
+            return {
+                "status": "success",
+                "domain_type": "sports",
+                "dataset_name": ds_name,
+                "dashboard_title": "FIFA World Cup Player Performance Analytics",
+                "unit_symbol": "",
+                "total_rows": tot_records,
+                "kpis": {
+                    "card1_title": "Total Player Records",
+                    "card1_val": f"{tot_records:,}",
+                    "card1_badge": "Players",
+                    "card2_title": "Total Tournament Goals",
+                    "card2_val": f"{tot_goals:,}",
+                    "card2_badge": "Goals Scored",
+                    "card3_title": "Avg Player Rating",
+                    "card3_val": f"{avg_rating:.2f}",
+                    "card3_badge": "Rating / 10",
+                    "card4_title": "Participating Teams",
+                    "card4_val": f"{tot_teams}",
+                    "card4_badge": "Teams / Nations"
+                },
+                "titles": {
+                    "region": "Total Goals by National Team",
+                    "category": "Player Position Breakdown",
+                    "entity": "Top 5 Goal Scorers"
+                },
+                "charts": {
+                    "regional": team_dict,
+                    "category": position_dict,
+                    "salespersons": entity_dict,
+                    "monthly": stage_dict
+                }
+            }
+
+        # ─── 2. SALES DOMAIN COMPUTATION ─────────────────────────────────────
+        elif domain_type == "sales":
+            sales_col = cols_lower.get("sales") or cols_lower.get("revenue") or cols_lower.get("total_sales") or cols_lower.get("amount")
+            profit_col = cols_lower.get("profit") or cols_lower.get("margin") or cols_lower.get("discount")
+            region_col = cols_lower.get("region") or cols_lower.get("area") or cols_lower.get("zone") or cols_lower.get("state")
+            category_col = cols_lower.get("category") or cols_lower.get("product_category") or cols_lower.get("segment")
+            entity_col = cols_lower.get("salesperson") or cols_lower.get("sales_rep") or cols_lower.get("employee") or cols_lower.get("customer") or cols_lower.get("product")
+            date_col = cols_lower.get("month") or cols_lower.get("orderdate") or cols_lower.get("date")
+
+            tot_sales = float(pd.to_numeric(df[sales_col], errors="coerce").sum()) if sales_col else 0.0
+            tot_profit = float(pd.to_numeric(df[profit_col], errors="coerce").sum()) if profit_col else 0.0
+            tot_orders = int(len(df))
+            avg_val = float(tot_sales / tot_orders) if tot_orders > 0 else 0.0
+
+            region_dict = {}
+            if region_col and sales_col:
                 gdf = df.groupby(region_col)[sales_col].apply(lambda x: pd.to_numeric(x, errors="coerce").sum())
                 region_dict = {str(k): float(v) for k, v in gdf.items() if pd.notnull(v)}
-            except Exception:
-                pass
 
-        # 3. Compute Category Breakdown
-        category_dict = {}
-        if category_col and sales_col:
-            try:
+            category_dict = {}
+            if category_col and sales_col:
                 gdf = df.groupby(category_col)[sales_col].apply(lambda x: pd.to_numeric(x, errors="coerce").sum())
                 category_dict = {str(k): float(v) for k, v in gdf.items() if pd.notnull(v)}
-            except Exception:
-                pass
 
-        # 4. Compute Top 5 Salespersons Breakdown
-        salesperson_dict = {}
-        if salesperson_col and sales_col:
-            try:
-                gdf = df.groupby(salesperson_col)[sales_col].apply(lambda x: pd.to_numeric(x, errors="coerce").sum()).nlargest(5)
-                salesperson_dict = {str(k): float(v) for k, v in gdf.items() if pd.notnull(v)}
-            except Exception:
-                pass
+            entity_dict = {}
+            if entity_col and sales_col:
+                gdf = df.groupby(entity_col)[sales_col].apply(lambda x: pd.to_numeric(x, errors="coerce").sum()).nlargest(5)
+                entity_dict = {str(k): float(v) for k, v in gdf.items() if pd.notnull(v)}
 
-        # 5. Compute Monthly Trend Breakdown
-        monthly_dict = {}
-        if month_col and sales_col:
-            try:
-                gdf = df.groupby(month_col)[sales_col].apply(lambda x: pd.to_numeric(x, errors="coerce").sum())
+            monthly_dict = {}
+            if date_col and sales_col:
+                gdf = df.groupby(date_col)[sales_col].apply(lambda x: pd.to_numeric(x, errors="coerce").sum())
                 monthly_dict = {str(k): float(v) for k, v in gdf.items() if pd.notnull(v)}
-            except Exception:
-                pass
 
-        return {
-            "status": "success",
-            "dataset_name": ds_name,
-            "total_rows": tot_orders,
-            "kpis": {
-                "total_revenue": round(tot_sales, 2),
-                "total_profit": round(tot_profit, 2),
-                "total_orders": tot_orders,
-                "avg_order_value": round(avg_val, 2)
-            },
-            "charts": {
-                "regional": region_dict,
-                "category": category_dict,
-                "salespersons": salesperson_dict,
-                "monthly": monthly_dict
+            return {
+                "status": "success",
+                "domain_type": "sales",
+                "dataset_name": ds_name,
+                "dashboard_title": "Sales & Commercial Performance Dashboard",
+                "unit_symbol": "$",
+                "total_rows": tot_orders,
+                "kpis": {
+                    "card1_title": "Total Revenue",
+                    "card1_val": f"${tot_sales:,.2f}",
+                    "card1_badge": "Revenue",
+                    "card2_title": "Total Profit",
+                    "card2_val": f"${tot_profit:,.2f}",
+                    "card2_badge": "Profit",
+                    "card3_title": "Total Orders",
+                    "card3_val": f"{tot_orders:,}",
+                    "card3_badge": "Orders",
+                    "card4_title": "Avg Order Value",
+                    "card4_val": f"${avg_val:,.2f}",
+                    "card4_badge": "Avg / Order"
+                },
+                "titles": {
+                    "region": f"{region_col or 'Region'} Sales Performance",
+                    "category": f"{category_col or 'Category'} Revenue Breakdown",
+                    "entity": f"Top 5 Performing {entity_col or 'Salespersons'}s"
+                },
+                "charts": {
+                    "regional": region_dict,
+                    "category": category_dict,
+                    "salespersons": entity_dict,
+                    "monthly": monthly_dict
+                }
             }
-        }
+
+        # ─── 3. GENERAL / HR / OTHER FALLBACK ─────────────────────────────────
+        else:
+            num_cols = df.select_dtypes(include=["number"]).columns.tolist()
+            text_cols = df.select_dtypes(include=["object", "category", "string"]).columns.tolist()
+            
+            m1 = num_cols[0] if num_cols else None
+            m2 = num_cols[1] if len(num_cols) > 1 else m1
+            c1 = text_cols[0] if text_cols else "Group"
+            c2 = text_cols[1] if len(text_cols) > 1 else c1
+            c3 = text_cols[2] if len(text_cols) > 2 else c1
+
+            v1 = float(pd.to_numeric(df[m1], errors="coerce").sum()) if m1 else 0.0
+            v2 = float(pd.to_numeric(df[m2], errors="coerce").mean()) if m2 else 0.0
+            tot_r = int(len(df))
+            u_cat = int(df[c1].nunique()) if c1 in df else 0
+
+            d1 = df.groupby(c1)[m1].sum().nlargest(6).to_dict() if c1 in df and m1 else {}
+            d2 = df.groupby(c2).size().to_dict() if c2 in df else {}
+            d3 = df.groupby(c3)[m1].sum().nlargest(5).to_dict() if c3 in df and m1 else {}
+
+            return {
+                "status": "success",
+                "domain_type": "general",
+                "dataset_name": ds_name,
+                "dashboard_title": f"{ds_name.replace('_', ' ').title()} Analytics Overview",
+                "unit_symbol": "",
+                "total_rows": tot_r,
+                "kpis": {
+                    "card1_title": "Total Records",
+                    "card1_val": f"{tot_r:,}",
+                    "card1_badge": "Rows",
+                    "card2_title": f"Total {m1 or 'Metric'}",
+                    "card2_val": f"{v1:,.2f}",
+                    "card2_badge": m1 or "Sum",
+                    "card3_title": f"Avg {m2 or 'Metric'}",
+                    "card3_val": f"{v2:,.2f}",
+                    "card3_badge": m2 or "Mean",
+                    "card4_title": f"Unique {c1}",
+                    "card4_val": f"{u_cat:,}",
+                    "card4_badge": "Unique"
+                },
+                "titles": {
+                    "region": f"{m1 or 'Metric'} by {c1}",
+                    "category": f"{c2} Distribution",
+                    "entity": f"Top 5 {c3}s"
+                },
+                "charts": {
+                    "regional": d1,
+                    "category": d2,
+                    "salespersons": d3,
+                    "monthly": {}
+                }
+            }
 

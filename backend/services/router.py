@@ -57,6 +57,8 @@ def classify_query_engine_detailed(question: str, prev_plan: dict = None, conver
         }
 
     # ─── New Phase B QueryPlanner Integration ──────────────────────────────
+    active_df_name = list(config.datasets.keys())[0] if config.datasets else None
+    active_df = config.datasets[active_df_name] if active_df_name and active_df_name in config.datasets else None
     planner = QueryPlanner(active_df_name)
     plan = planner.plan(question)
     

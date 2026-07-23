@@ -54,6 +54,41 @@ def list_datasets_endpoint(request: Request):
     conn.close()
     return [dict(row) for row in rows]
 
+@router.get("/datasets/active")
+def get_active_dataset_endpoint():
+    """
+    Returns metadata of current active dataset.
+    """
+    try:
+        conn = db.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM datasets WHERE is_active = 1 LIMIT 1")
+        row = cursor.fetchone()
+        if not row:
+            cursor.execute("SELECT * FROM datasets ORDER BY upload_time DESC LIMIT 1")
+            row = cursor.fetchone()
+        conn.close()
+
+        if row:
+            return {"status": "success", "dataset": dict(row)}
+
+        if config.datasets:
+            ds_name = list(config.datasets.keys())[0]
+            df = config.datasets[ds_name]
+            return {
+                "status": "success",
+                "dataset": {
+                    "id": "active_file",
+                    "name": ds_name,
+                    "rows": len(df),
+                    "columns": len(df.columns),
+                    "columns_list": df.columns.tolist()
+                }
+            }
+        return {"status": "none", "message": "No active dataset"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/datasets/active")
 def set_active_dataset_endpoint(req: ActivateRequest, request: Request):
     """

@@ -16,7 +16,7 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (username: string, email: string, password: str) => Promise<{ success: boolean; error?: string; role?: string }>;
+  signup: (username: string, email: string, password: string) => Promise<{ success: boolean; error?: string; role?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   // Login handler
-  const login = async (username: str, password: str) => {
+  const login = async (username: string, password: string) => {
     try {
       const res = await fetch(ApiClient.getUrl("/api/auth/login"), {
         method: "POST",
@@ -104,7 +104,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Signup handler
-  const signup = async (username: str, email: str, password: str) => {
+  const signup = async (username: string, email: string, password: string) => {
     try {
       const res = await fetch(ApiClient.getUrl("/api/auth/signup"), {
         method: "POST",

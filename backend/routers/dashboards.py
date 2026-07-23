@@ -20,6 +20,15 @@ def list_dashboards_endpoint():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/dashboards/live_metrics")
+def get_live_dashboard_metrics():
+    try:
+        from backend.services.ai_dashboard import AIDashboardService
+        service = AIDashboardService()
+        return service.compute_live_dashboard_data()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/dashboards/{id}")
 def get_dashboard_endpoint(id: str):
     try:

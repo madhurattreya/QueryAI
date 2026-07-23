@@ -193,7 +193,7 @@ def compile_badges_and_explanation(total_start: float, dataset_name: str, engine
 
     query_explanation = {
         "dataset": dataset_name,
-        "measure": parsed_query.execution_plan.get("measure") or (parsed_query.aggregations[0]["column"] if parsed_query and parsed_query.aggregations else "None"),
+        "measure": (parsed_query.execution_plan.get("measure") if parsed_query and parsed_query.execution_plan else None) or (parsed_query.aggregations[0]["column"] if parsed_query and parsed_query.aggregations else "None"),
         "aggregation": parsed_query.aggregations[0]["operator"].upper() if parsed_query and parsed_query.aggregations else "None",
         "groupby": parsed_query.execution_plan.get("groupby") if parsed_query else [],
         "sorting": parsed_query.execution_plan.get("sorting") if parsed_query else [],
@@ -226,6 +226,7 @@ def background_tasks_worker(
     dataset_id: str
 ):
     db.add_message(conv_id=conv_id, role="user", content=question)
+    time.sleep(0.01)
     db.add_message(
         conv_id=conv_id,
         role="assistant",
@@ -791,14 +792,32 @@ class QueryOrchestrator:
                 context.code = code
                 timings["Execution"] = time.time() - t_start_chat
 
-            elif engine_type == "ambiguity":
-                t_start_amb = time.time()
-                reason = parsed_query.execution_plan.get("match_reason") if parsed_query else "Ambiguous columns detected."
-                context.explanation = f"Ambiguity detected: {reason}\nCould you please clarify your request?"
-                context.raw_result = pd.DataFrame([{"Status": "Ambiguous", "Reason": reason}])
-                code = "# Ambiguity Resolution Required"
-                context.code = code
-                timings["Execution"] = time.time() - t_start_amb
+            elif engine_type == "dashboard_gen":
+                try:
+                    yield json.dumps({"type": "progress", "step": "Synthesizing AI Dashboard Layout..."}) + "\n"
+                    from backend.services.ai_dashboard import AIDashboardService
+                    service = AIDashboardService()
+                    layout = service.generate_dashboard(question, selected_schema_desc)
+                    cards_list = layout.get("cards", []) if isinstance(layout.get("cards"), list) else []
+                    widget_titles = [str(c.get("title", "Widget")) if isinstance(c, dict) else str(c) for c in cards_list]
+                    context.explanation = (
+                        f"### Executive Summary\nI have successfully created the **{layout.get('title', 'Sales Dashboard')}** dashboard based on your request.\n\n"
+                        f"### Business Meaning\nThis dashboard contains {len(widget_titles)} metric widgets designed to track key indicators for this dataset.\n\n"
+                        f"### Why This Happened\nThe BI Architect mapped the request to the available columns and constructed relevant visualization cards.\n\n"
+                        f"### Key Drivers\nDashboard widgets: {', '.join(widget_titles)}.\n\n"
+                        f"### Potential Risks\nEnsure the queries for each widget align with the expected transaction scopes.\n\n"
+                        f"### Recommendations\nOpen the dashboards workspace to customize or edit layout placements.\n\n"
+                        f"### Suggested Next Questions\n1. Open the created dashboard\n2. Add a line chart for monthly trends to this dashboard\n3. Export dashboard as PDF"
+                    )
+                    context.raw_result = pd.DataFrame([{"Dashboard ID": layout.get("id"), "Title": layout.get("title")}])
+                    result = context.raw_result
+                    code = f"# AI Dashboard Generation\n# Generated Dashboard ID: {layout.get('id')}\n# Layout:\n" + json.dumps(layout, indent=2)
+                    context.code = code
+                    context.dashboard_layout = layout
+                except Exception as e:
+                    context.error = f"Failed to generate dashboard: {str(e)}"
+                    yield json.dumps({"type": "error", "status": "error", "error": context.error, "time_taken": round(time.time() - total_start, 3)}) + "\n"
+                    return
 
             else:
                 # ─── Aggregations, filters, sortings ─────────────────────────────
@@ -917,6 +936,7 @@ class QueryOrchestrator:
                 "timings": {k: round(v, 4) for k, v in timings.items()},
                 "complexity": complexity,
                 "engine_used": engine_type,
+                "dashboard_layout": getattr(context, "dashboard_layout", None),
                 "prompt_size": 0,
                 "model": "deterministic_query_engine",
                 "cache_hit": False,
@@ -1099,14 +1119,17 @@ class QueryOrchestrator:
                 return
         elif engine_type == "dashboard_gen":
             try:
+                yield json.dumps({"type": "progress", "step": "Synthesizing AI Dashboard Layout..."}) + "\n"
                 from backend.services.ai_dashboard import AIDashboardService
                 service = AIDashboardService()
                 layout = service.generate_dashboard(question, selected_schema_desc)
+                cards_list = layout.get("cards", []) if isinstance(layout.get("cards"), list) else []
+                widget_titles = [str(c.get("title", "Widget")) if isinstance(c, dict) else str(c) for c in cards_list]
                 context.explanation = (
-                    f"### Executive Summary\nI have successfully created the **{layout.get('title')}** dashboard based on your request.\n\n"
-                    f"### Business Meaning\nThis dashboard contains {len(layout.get('cards', []))} metric widgets designed to track key indicators for this dataset.\n\n"
+                    f"### Executive Summary\nI have successfully created the **{layout.get('title', 'Sales Dashboard')}** dashboard based on your request.\n\n"
+                    f"### Business Meaning\nThis dashboard contains {len(widget_titles)} metric widgets designed to track key indicators for this dataset.\n\n"
                     f"### Why This Happened\nThe BI Architect mapped the request to the available columns and constructed relevant visualization cards.\n\n"
-                    f"### Key Drivers\nDashboard widgets: {', '.join([c.get('title') for c in layout.get('cards', [])])}.\n\n"
+                    f"### Key Drivers\nDashboard widgets: {', '.join(widget_titles)}.\n\n"
                     f"### Potential Risks\nEnsure the queries for each widget align with the expected transaction scopes.\n\n"
                     f"### Recommendations\nOpen the dashboards workspace to customize or edit layout placements.\n\n"
                     f"### Suggested Next Questions\n1. Open the created dashboard\n2. Add a line chart for monthly trends to this dashboard\n3. Export dashboard as PDF"
@@ -1115,6 +1138,7 @@ class QueryOrchestrator:
                 result = context.raw_result
                 code = f"# AI Dashboard Generation\n# Generated Dashboard ID: {layout.get('id')}\n# Layout:\n" + json.dumps(layout, indent=2)
                 context.code = code
+                debug_info["dashboard_layout"] = layout
             except Exception as e:
                 context.error = f"Failed to generate dashboard: {str(e)}"
                 yield json.dumps({"type": "error", "status": "error", "error": context.error, "time_taken": round(time.time() - total_start, 3)}) + "\n"

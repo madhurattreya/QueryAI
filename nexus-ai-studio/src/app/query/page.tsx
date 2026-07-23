@@ -168,13 +168,19 @@ export default function QueryPage() {
     }
   };
 
-  // Load conversations list on mount
+  // Load conversations list on mount & restore last active session
   const fetchConversations = async () => {
     try {
       const res = await ApiClient.request("/api/conversations");
       if (res.ok) {
         const data = await res.json();
         setConversations(data);
+        const savedConvId = localStorage.getItem("active_conv_id");
+        if (savedConvId && data.some((c: any) => c.id === savedConvId)) {
+          loadConversation(savedConvId);
+        } else if (data.length > 0) {
+          loadConversation(data[0].id);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch conversations", err);
@@ -210,6 +216,7 @@ export default function QueryPage() {
   const loadConversation = async (id: string) => {
     if (loading) handleCancel();
     setActiveConvId(id);
+    localStorage.setItem("active_conv_id", id);
     setMessages([]);
     setErrorMessage("");
     try {
@@ -253,8 +260,28 @@ export default function QueryPage() {
       if (res.ok) {
         if (activeConvId === id) {
           setActiveConvId(null);
+          localStorage.removeItem("active_conv_id");
           setMessages([]);
         }
+        fetchConversations();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Clear all conversations
+  const clearAllConversations = async () => {
+    if (!confirm("Are you sure you want to delete ALL chat sessions? This action cannot be undone.")) return;
+    if (loading) handleCancel();
+    try {
+      const res = await ApiClient.request("/api/conversations/clear_all", {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        setActiveConvId(null);
+        localStorage.removeItem("active_conv_id");
+        setMessages([]);
         fetchConversations();
       }
     } catch (err) {
@@ -376,9 +403,10 @@ export default function QueryPage() {
                 return updated;
               });
             } else if (data.type === "success") {
-              // Extract active ID
-              if (!activeConvId) {
+              // Extract active ID and persist session to localStorage immediately
+              if (data.conversation_id) {
                 setActiveConvId(data.conversation_id);
+                localStorage.setItem("active_conv_id", data.conversation_id);
                 fetchConversations();
               }
               setMessages((prev) => {
@@ -487,11 +515,21 @@ export default function QueryPage() {
               <div className="flex justify-between items-center gap-2">
                 <button
                   onClick={startNewChat}
-                  className="flex-grow bg-vibrant-blue hover:bg-secondary-container text-white text-[10px] font-bold py-1.5 px-3 rounded flex items-center justify-center gap-1 transition-all cursor-pointer shadow-xs"
+                  className="flex-grow bg-vibrant-blue hover:bg-secondary-container text-white text-[10px] font-bold py-1.5 px-2 rounded flex items-center justify-center gap-1 transition-all cursor-pointer shadow-xs"
                 >
                   <span className="material-symbols-outlined text-xs">add</span>
                   New Chat
                 </button>
+                {conversations.length > 0 && (
+                  <button
+                    onClick={clearAllConversations}
+                    title="Delete all chat sessions"
+                    className="bg-error/10 hover:bg-error/20 text-error border border-error/30 text-[10px] font-bold py-1.5 px-2 rounded flex items-center justify-center gap-1 transition-all cursor-pointer shadow-xs shrink-0"
+                  >
+                    <span className="material-symbols-outlined text-xs">delete_sweep</span>
+                    Clear All
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -675,21 +713,9 @@ export default function QueryPage() {
                         </div>
                       ) : (
                         <>
-                          {/* AI Confidence Badge & Metadata row */}
-                          {msg.confidence_badge && (
+                          {/* Metadata row */}
+                          {msg.query_explanation && (
                             <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-outline-variant/30 mb-3">
-                              {/* Badge */}
-                              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase border ${
-                                msg.confidence_badge.level === "Deterministic"
-                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
-                                  : msg.confidence_badge.level === "Hybrid"
-                                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25"
-                                  : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/25"
-                              }`}>
-                                <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                                <span>{msg.confidence_badge.level} ({msg.confidence_badge.score}% Match)</span>
-                                <span className="text-[9px] opacity-75 font-medium ml-1">| {msg.confidence_badge.description}</span>
-                              </div>
 
                               {/* Query Explanation Collapsible Panel */}
                               {msg.query_explanation && (
@@ -846,8 +872,85 @@ export default function QueryPage() {
                             </div>
                           )}
 
+                          {/* AI Dashboard Action Card Banner & Dynamic Widgets */}
+                          {(msg.engine_used === "dashboard_gen" || msg.debug_info?.engine_used === "dashboard_gen") && (
+                            <div className="space-y-3 mb-4">
+                              <div className="bg-gradient-to-r from-vibrant-blue/10 to-indigo-500/10 border border-vibrant-blue/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-lg bg-vibrant-blue text-white flex items-center justify-center font-bold shrink-0">
+                                    <span className="material-symbols-outlined text-xl font-variation-settings-fill" style={{ fontVariationSettings: "'FILL' 1" }}>dashboard</span>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-xs font-bold text-deep-navy">AI Dashboard Created & Saved!</h4>
+                                    <p className="text-[11px] text-on-surface-variant font-medium mt-0.5">
+                                      Full interactive dashboard layout with all requested metric widgets has been generated and saved.
+                                    </p>
+                                  </div>
+                                </div>
+                                <a
+                                  href={`/visualizations?tab=dashboards&id=${msg.result?.[0]?.["Dashboard ID"] || ""}`}
+                                  className="bg-vibrant-blue hover:bg-secondary-container text-white text-xs font-bold py-2 px-4 rounded-lg flex items-center gap-1.5 transition-all shadow-xs shrink-0 cursor-pointer text-decoration-none"
+                                >
+                                  <span className="material-symbols-outlined text-sm">open_in_new</span>
+                                  View in Visualizations Tab
+                                </a>
+                              </div>
+
+                              {/* Live Widget Cards Preview */}
+                              {(() => {
+                                const layout = msg.debug_info?.dashboard_layout || (() => {
+                                  if (msg.generated_code && msg.generated_code.includes("# Layout:")) {
+                                    try { return JSON.parse(msg.generated_code.split("# Layout:")[1].trim()); } catch (e) { return null; }
+                                  }
+                                  return null;
+                                })();
+                                const cards = layout?.cards || [];
+                                if (!cards || cards.length === 0) return null;
+
+                                return (
+                                  <div className="space-y-3 pt-1">
+                                    <div className="flex justify-between items-center px-1">
+                                      <h5 className="text-[10px] font-bold text-deep-navy uppercase tracking-wider flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-xs text-vibrant-blue">widgets</span>
+                                        Generated Metric & Chart Widgets ({cards.length})
+                                      </h5>
+                                      <span className="text-[10px] font-semibold text-on-surface-variant">
+                                        {layout.title || "Sales Dashboard"}
+                                      </span>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                                      {cards.map((card: any, cIdx: number) => (
+                                        <div
+                                          key={card.id || cIdx}
+                                          className={`bg-surface border border-outline-variant/30 rounded-lg p-3 shadow-2xs space-y-1.5 flex flex-col justify-between ${
+                                            card.type === "kpi" ? "bg-gradient-to-br from-surface to-primary-fixed/20 border-vibrant-blue/30" : ""
+                                          }`}
+                                        >
+                                          <div className="flex justify-between items-start">
+                                            <h6 className="text-[11px] font-bold text-deep-navy flex items-center gap-1 leading-tight">
+                                              <span className="material-symbols-outlined text-xs text-vibrant-blue">
+                                                {card.type === "kpi" ? "show_chart" : card.chart_type === "pie" ? "pie_chart" : card.chart_type === "line" ? "show_chart" : "bar_chart"}
+                                              </span>
+                                              {card.title}
+                                            </h6>
+                                            <span className="text-[8px] uppercase tracking-wider font-bold text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded border border-outline-variant/20">
+                                              {card.type === "kpi" ? "KPI" : card.chart_type?.toUpperCase() || "CHART"}
+                                            </span>
+                                          </div>
+                                          <p className="text-[10px] text-on-surface-variant italic truncate">
+                                            "{card.query}"
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+
                           {/* Data tables rendering */}
-                          {msg.result && msg.result.length > 0 && (
+                          {msg.result && msg.result.length > 0 && msg.engine_used !== "dashboard_gen" && msg.debug_info?.engine_used !== "dashboard_gen" && (
                             <div>
                               <div className="flex justify-between items-center mb-2">
                                 <h4 className="text-[10px] font-bold text-deep-navy uppercase tracking-wider">Returned Records</h4>

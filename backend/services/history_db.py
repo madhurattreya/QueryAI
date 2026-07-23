@@ -592,6 +592,24 @@ def delete_conversation(conv_id: str):
     conn.commit()
     conn.close()
 
+def clear_all_conversations(workspace_id: str = None, user_id: str = None):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    if user_id:
+        cursor.execute("DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user_id = ?)", (user_id,))
+        cursor.execute("DELETE FROM charts WHERE conversation_id IN (SELECT id FROM conversations WHERE user_id = ?)", (user_id,))
+        cursor.execute("DELETE FROM conversations WHERE user_id = ?", (user_id,))
+    elif workspace_id:
+        cursor.execute("DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE workspace_id = ?)", (workspace_id,))
+        cursor.execute("DELETE FROM charts WHERE conversation_id IN (SELECT id FROM conversations WHERE workspace_id = ?)", (workspace_id,))
+        cursor.execute("DELETE FROM conversations WHERE workspace_id = ?", (workspace_id,))
+    else:
+        cursor.execute("DELETE FROM messages")
+        cursor.execute("DELETE FROM charts")
+        cursor.execute("DELETE FROM conversations")
+    conn.commit()
+    conn.close()
+
 def list_conversations(workspace_id: str = None, user_id: str = None):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -642,10 +660,10 @@ def add_message(conv_id: str, role: str, content: str, generated_code: str = Non
                              prompt_size, engine_used, debug_info, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (msg_id, conv_id, role, content, generated_code, result_preview, result_file,
-          chart_id, execution_time, rows, prompt_size, engine_used, debug_info, datetime.now()))
+          chart_id, execution_time, rows, prompt_size, engine_used, debug_info, datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")))
     
     # Update conversation's updated_at timestamp
-    cursor.execute("UPDATE conversations SET updated_at = ? WHERE id = ?", (datetime.now(), conv_id))
+    cursor.execute("UPDATE conversations SET updated_at = ? WHERE id = ?", (datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"), conv_id))
     
     conn.commit()
     conn.close()
@@ -655,7 +673,7 @@ def get_messages(conv_id: str, limit: int = 5):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC", 
+        "SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC, role DESC", 
         (conv_id,)
     )
     rows = cursor.fetchall()

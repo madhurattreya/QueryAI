@@ -40,9 +40,6 @@ export function getBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
-  if (typeof window !== "undefined" && window.location.hostname) {
-    return `http://${window.location.hostname}:8000`;
-  }
   return "http://127.0.0.1:8000";
 }
 
@@ -110,8 +107,19 @@ export class ApiClient {
         throw err;
       }
 
-      // If connection failed (e.g. Failed to fetch), attempt fallback between 127.0.0.1 and localhost
-      if (err.message.includes("Failed to fetch") || err.message.includes("TypeError") || err.name === "TypeError") {
+      // If connection failed (e.g. Failed to fetch), attempt 1 quick retry with 150ms delay
+      if (err?.message?.includes("Failed to fetch") || err?.message?.includes("TypeError") || err?.name === "TypeError") {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        try {
+          const retryResponse = await fetch(primaryUrl, {
+            ...options,
+            headers,
+          });
+          if (retryResponse.ok) return retryResponse;
+        } catch (retryErr) {
+          // Retry failed
+        }
+
         const fallbackUrl = primaryUrl.includes("127.0.0.1")
           ? primaryUrl.replace("127.0.0.1", "localhost")
           : primaryUrl.includes("localhost")
@@ -126,9 +134,7 @@ export class ApiClient {
             });
 
             if (fallbackResponse.ok) {
-              if (fallbackUrl.includes("localhost")) {
-                cachedBaseUrl = "http://localhost:8000";
-              } else if (fallbackUrl.includes("127.0.0.1")) {
+              if (fallbackUrl.includes("127.0.0.1")) {
                 cachedBaseUrl = "http://127.0.0.1:8000";
               }
               return fallbackResponse;
@@ -162,7 +168,7 @@ export class ApiClient {
       return {
         code: "BACKEND_UNREACHABLE",
         userMessage: "Cannot connect to the backend server. Please verify the backend is running on port 8000.",
-        technicalDetail: `Connection failed to base url: ${BASE_URL}`,
+        technicalDetail: `Connection failed to base url: ${getBaseUrl()}`,
         isRetryable: true,
       };
     }

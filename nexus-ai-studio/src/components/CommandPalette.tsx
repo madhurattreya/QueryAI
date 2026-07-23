@@ -65,9 +65,12 @@ export default function CommandPalette() {
 
     const delayDebounce = setTimeout(async () => {
       try {
-        const data = await ApiClient.request(`/api/search?q=${encodeURIComponent(query)}`);
-        if (data.status === "success") {
-          setResults(data.results);
+        const res = await ApiClient.request(`/api/search?q=${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === "success" || data.results) {
+            setResults(data.results || data);
+          }
         }
       } catch (err) {
         console.error("Search error:", err);

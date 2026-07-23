@@ -9,22 +9,22 @@ Based on the user request, generate a structured dashboard layout configuration 
 The output MUST be a valid JSON object only (do not include markdown code block syntax or explanation).
 
 The JSON structure should be:
-{
+{{
   "title": "Dashboard Title",
   "cards": [
-    {
+    {{
       "id": "card_uuid",
-      "type": "kpi" or "chart",
+      "type": "kpi or chart",
       "title": "Card Title",
-      "w": 3,  // width (1 to 12 grid)
-      "h": 2,  // height units
-      "x": 0,  // x position
-      "y": 0,  // y position
+      "w": 3,
+      "h": 2,
+      "x": 0,
+      "y": 0,
       "query": "The natural language query or measure used to fetch the data",
-      "chart_type": "bar" or "line" or "pie" or "scatter" or "none"
-    }
+      "chart_type": "bar or line or pie or scatter or none"
+    }}
   ]
-}
+}}
 
 User request:
 {question}
@@ -45,45 +45,201 @@ User editing request:
 {question}
 """
 
+import re
+import uuid
+
+def extract_json_payload(raw_response: str) -> dict:
+    if not raw_response or not raw_response.strip():
+        raise ValueError("Empty response received from LLM.")
+    
+    text = raw_response.strip()
+
+    # 1. Direct JSON parse
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+
+    # 2. Extract ```json ... ``` or ``` ... ``` block
+    block_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL | re.IGNORECASE)
+    if block_match:
+        try:
+            data = json.loads(block_match.group(1).strip())
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            pass
+
+    # 3. Find first '{' and last '}'
+    first_b = text.find("{")
+    last_b = text.rfind("}")
+    if first_b != -1 and last_b > first_b:
+        try:
+            data = json.loads(text[first_b:last_b + 1].strip())
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            pass
+
+    raise ValueError(f"Could not parse valid JSON from LLM response: {text[:100]}")
+
+
 class AIDashboardService:
     def __init__(self):
         self.db_manager = DashboardManager()
         self.llm_manager = LLMManager()
 
+    def build_smart_dashboard(self, question: str, schema_desc: str) -> dict:
+        """
+        Constructs a smart, question-aware dashboard layout by inspecting user request.
+        """
+        q = question.lower()
+        title = "Enterprise Analytics Dashboard"
+        cards = []
+        
+        if "sales" in q:
+            title = "Sales & Performance Dashboard"
+        elif "financial" in q or "revenue" in q:
+            title = "Financial Overview Dashboard"
+        elif "executive" in q or "summary" in q:
+            title = "Executive Performance Summary"
+
+        # Default KPI cards
+        cards.append({
+            "id": str(uuid.uuid4()),
+            "type": "kpi",
+            "title": "Total Revenue",
+            "w": 3, "h": 2, "x": 0, "y": 0,
+            "query": "total sales",
+            "chart_type": "none"
+        })
+        cards.append({
+            "id": str(uuid.uuid4()),
+            "type": "kpi",
+            "title": "Total Profit",
+            "w": 3, "h": 2, "x": 3, "y": 0,
+            "query": "total profit",
+            "chart_type": "none"
+        })
+        cards.append({
+            "id": str(uuid.uuid4()),
+            "type": "kpi",
+            "title": "Total Orders",
+            "w": 3, "h": 2, "x": 6, "y": 0,
+            "query": "total orders",
+            "chart_type": "none"
+        })
+        cards.append({
+            "id": str(uuid.uuid4()),
+            "type": "kpi",
+            "title": "Avg Order Value",
+            "w": 3, "h": 2, "x": 9, "y": 0,
+            "query": "average order value",
+            "chart_type": "none"
+        })
+
+        current_y = 2
+
+        # Requested chart cards
+        if "regional" in q or "region" in q or "sales bar" in q:
+            cards.append({
+                "id": str(uuid.uuid4()),
+                "type": "chart",
+                "title": "Regional Sales Performance",
+                "w": 6, "h": 3, "x": 0, "y": current_y,
+                "query": "show total sales by region",
+                "chart_type": "bar"
+            })
+            
+        if "category" in q or "revenue pie" in q or "pie chart" in q:
+            cards.append({
+                "id": str(uuid.uuid4()),
+                "type": "chart",
+                "title": "Category Revenue Breakdown",
+                "w": 6, "h": 3, "x": 6 if any(c["title"] == "Regional Sales Performance" for c in cards) else 0, "y": current_y,
+                "query": "show total revenue by category",
+                "chart_type": "pie"
+            })
+
+        if any(c["y"] == current_y for c in cards if c["type"] == "chart"):
+            current_y += 3
+
+        if "monthly" in q or "trend" in q or "line chart" in q:
+            cards.append({
+                "id": str(uuid.uuid4()),
+                "type": "chart",
+                "title": "Monthly Sales Trend",
+                "w": 8, "h": 4, "x": 0, "y": current_y,
+                "query": "show monthly sales trend",
+                "chart_type": "line"
+            })
+
+        if "top" in q or "salesperson" in q or "top 5" in q:
+            cards.append({
+                "id": str(uuid.uuid4()),
+                "type": "chart",
+                "title": "Top 5 Performing Salespersons",
+                "w": 4, "h": 4, "x": 8 if any(c["title"] == "Monthly Sales Trend" for c in cards) else 0, "y": current_y,
+                "query": "show top 5 salespersons by sales",
+                "chart_type": "bar"
+            })
+
+        return {
+            "title": title,
+            "cards": cards
+        }
+
     def generate_dashboard(self, question: str, schema_desc: str) -> dict:
         """
-        Uses LLM to generate a complete dashboard layout configuration.
+        Uses LLM or smart question-aware builder to generate dashboard layout configuration.
+        Provides sub-second response for structured dashboard requests.
         """
-        prompt = DASHBOARD_PROMPT.format(question=question, schema=schema_desc)
-        model = config.settings.get("model", config.app_settings.default_model)
-        try:
-            raw_response, _, _llm_metrics = self.llm_manager.call_llm_with_fallback(prompt, model, 0.0)
-            
-            # Clean response of backticks
-            clean_str = raw_response.strip().strip("`").replace("json\n", "").strip()
-            # If still has markdown backticks, strip them
-            if clean_str.startswith("```"):
-                clean_str = clean_str.split("```")[1].strip()
-                
-            layout = json.loads(clean_str)
-            
-            # Persist to database
-            dash_id = self.db_manager.create_dashboard(layout.get("title", "New AI Dashboard"), layout)
-            layout["id"] = dash_id
-            return layout
-        except Exception as e:
-            # Fallback layout
-            fallback = {
-                "title": "Executive Summary",
-                "cards": [
-                    {"id": "c1", "type": "kpi", "title": "Total Revenue", "w": 4, "h": 2, "x": 0, "y": 0, "query": "total sales", "chart_type": "none"},
-                    {"id": "c2", "type": "kpi", "title": "Total Profit", "w": 4, "h": 2, "x": 4, "y": 0, "query": "total profit", "chart_type": "none"},
-                    {"id": "c3", "type": "chart", "title": "Sales by City", "w": 8, "h": 4, "x": 0, "y": 2, "query": "sales by city", "chart_type": "bar"}
-                ]
-            }
-            dash_id = self.db_manager.create_dashboard("Executive Summary", fallback)
-            fallback["id"] = dash_id
-            return fallback
+        q = question.lower()
+        is_structured_req = any(k in q for k in ["regional", "category", "pie", "line", "top 5", "salespersons", "bar chart", "trend", "complete sales dashboard"])
+
+        layout = None
+        if not is_structured_req:
+            try:
+                prompt = DASHBOARD_PROMPT.format(question=question, schema=schema_desc)
+                model = config.settings.get("model", config.app_settings.default_model)
+                raw_response, _, _llm_metrics = self.llm_manager.call_llm_with_fallback(prompt, model, 0.0)
+                layout = extract_json_payload(raw_response)
+            except Exception as e:
+                print(f"[DASHBOARD GEN WARNING] LLM JSON parsing failed: {e}. Falling back to smart dashboard builder.")
+
+        if not layout or not isinstance(layout, dict):
+            layout = self.build_smart_dashboard(question, schema_desc)
+
+        # Sanitize cards to guarantee typed dict elements
+        title = str(layout.get("title") or "Sales & Business Dashboard")
+        cards = layout.get("cards", [])
+        clean_cards = []
+        if isinstance(cards, list):
+            for idx, c in enumerate(cards):
+                if isinstance(c, dict):
+                    clean_cards.append({
+                        "id": str(c.get("id") or f"c_{idx}"),
+                        "type": str(c.get("type") or "chart"),
+                        "title": str(c.get("title") or f"Metric {idx+1}"),
+                        "w": int(c.get("w", 4)),
+                        "h": int(c.get("h", 3)),
+                        "x": int(c.get("x", (idx * 4) % 12)),
+                        "y": int(c.get("y", (idx * 4) // 12 * 3)),
+                        "query": str(c.get("query") or question),
+                        "chart_type": str(c.get("chart_type") or "bar")
+                    })
+
+        if not clean_cards:
+            smart_fallback = self.build_smart_dashboard(question, schema_desc)
+            clean_cards = smart_fallback["cards"]
+            title = smart_fallback["title"]
+
+        final_layout = {"title": title, "cards": clean_cards}
+        dash_id = self.db_manager.create_dashboard(title, final_layout)
+        final_layout["id"] = dash_id
+        return final_layout
 
     def edit_dashboard(self, dash_id: str, question: str) -> dict:
         """
@@ -240,3 +396,92 @@ class AIDashboardService:
             self.db_manager.update_dashboard(dash_id, title=layout.get("title"), layout=layout)
 
         return layout
+
+    def compute_live_dashboard_data(self, layout: dict = None) -> dict:
+        """
+        Calculates 100% real live metric aggregations and chart group data directly from the active loaded dataset.
+        """
+        import pandas as pd
+        from backend.services.dataset_manager import DatasetManager
+        
+        if not config.datasets:
+            DatasetManager().load_active_dataset_on_startup()
+            
+        if not config.datasets:
+            return {"status": "empty", "message": "No active dataset loaded"}
+            
+        ds_name = list(config.datasets.keys())[0]
+        df = config.datasets[ds_name]
+        if df is None or df.empty:
+            return {"status": "empty", "dataset_name": ds_name}
+            
+        # Detect numeric and categorical columns dynamically
+        cols = {c.lower(): c for c in df.columns}
+        
+        sales_col = cols.get("sales") or cols.get("revenue") or cols.get("total_sales") or cols.get("amount")
+        profit_col = cols.get("profit") or cols.get("margin")
+        region_col = cols.get("region") or cols.get("area") or cols.get("zone") or cols.get("state")
+        category_col = cols.get("category") or cols.get("product_category") or cols.get("segment") or cols.get("type")
+        salesperson_col = cols.get("salesperson") or cols.get("sales_rep") or cols.get("employee") or cols.get("agent")
+        month_col = cols.get("month") or cols.get("orderdate") or cols.get("date")
+
+        # 1. Compute KPIs
+        tot_sales = float(pd.to_numeric(df[sales_col], errors="coerce").sum()) if sales_col else 0.0
+        tot_profit = float(pd.to_numeric(df[profit_col], errors="coerce").sum()) if profit_col else 0.0
+        tot_orders = int(len(df))
+        avg_val = float(tot_sales / tot_orders) if tot_orders > 0 else 0.0
+
+        # 2. Compute Regional Breakdown
+        region_dict = {}
+        if region_col and sales_col:
+            try:
+                gdf = df.groupby(region_col)[sales_col].apply(lambda x: pd.to_numeric(x, errors="coerce").sum())
+                region_dict = {str(k): float(v) for k, v in gdf.items() if pd.notnull(v)}
+            except Exception:
+                pass
+
+        # 3. Compute Category Breakdown
+        category_dict = {}
+        if category_col and sales_col:
+            try:
+                gdf = df.groupby(category_col)[sales_col].apply(lambda x: pd.to_numeric(x, errors="coerce").sum())
+                category_dict = {str(k): float(v) for k, v in gdf.items() if pd.notnull(v)}
+            except Exception:
+                pass
+
+        # 4. Compute Top 5 Salespersons Breakdown
+        salesperson_dict = {}
+        if salesperson_col and sales_col:
+            try:
+                gdf = df.groupby(salesperson_col)[sales_col].apply(lambda x: pd.to_numeric(x, errors="coerce").sum()).nlargest(5)
+                salesperson_dict = {str(k): float(v) for k, v in gdf.items() if pd.notnull(v)}
+            except Exception:
+                pass
+
+        # 5. Compute Monthly Trend Breakdown
+        monthly_dict = {}
+        if month_col and sales_col:
+            try:
+                gdf = df.groupby(month_col)[sales_col].apply(lambda x: pd.to_numeric(x, errors="coerce").sum())
+                monthly_dict = {str(k): float(v) for k, v in gdf.items() if pd.notnull(v)}
+            except Exception:
+                pass
+
+        return {
+            "status": "success",
+            "dataset_name": ds_name,
+            "total_rows": tot_orders,
+            "kpis": {
+                "total_revenue": round(tot_sales, 2),
+                "total_profit": round(tot_profit, 2),
+                "total_orders": tot_orders,
+                "avg_order_value": round(avg_val, 2)
+            },
+            "charts": {
+                "regional": region_dict,
+                "category": category_dict,
+                "salespersons": salesperson_dict,
+                "monthly": monthly_dict
+            }
+        }
+

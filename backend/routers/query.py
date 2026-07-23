@@ -115,6 +115,15 @@ def delete_conversation_api(id: str):
     return {"status": "success", "message": "Conversation deleted."}
 
 
+@router.delete("/conversations/clear_all")
+def clear_all_conversations_api(workspace_id: str | None = None):
+    """
+    Deletes all chat sessions and messages history.
+    """
+    db.clear_all_conversations(workspace_id=workspace_id)
+    return {"status": "success", "message": "All conversations deleted."}
+
+
 @router.get("/chart/html")
 def get_chart_html(id: str | None = None):
     """

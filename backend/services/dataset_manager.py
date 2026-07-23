@@ -654,8 +654,12 @@ class DatasetManager:
             cursor = conn.cursor()
             cursor.execute("SELECT id FROM datasets WHERE is_active = 1 LIMIT 1")
             row = cursor.fetchone()
+            if not row:
+                cursor.execute("SELECT id FROM datasets ORDER BY id DESC LIMIT 1")
+                row = cursor.fetchone()
             conn.close()
             if row:
                 self.activate_dataset_by_id(row["id"])
+                print(f"[STARTUP SUCCESS] Activated dataset ID: {row['id']}")
         except Exception as e:
             print(f"[STARTUP ACTIVATION WARNING] {str(e)}")

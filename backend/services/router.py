@@ -43,13 +43,19 @@ def classify_query_engine_detailed(question: str, prev_plan: dict = None, conver
     from backend.services.query_parser import ParsedQuery, parse_question
     from backend.models.execution_plan import EngineType, IntentType
     
-    # Retrieve active dataset
-    active_df = None
-    active_df_name = ""
-    if config.datasets:
-        active_df_name = list(config.datasets.keys())[0]
-        active_df = config.datasets[active_df_name]
-        
+    q_lower = question.lower()
+    if ("create" in q_lower or "generate" in q_lower or "build" in q_lower or "make" in q_lower) and "dashboard" in q_lower:
+        return {
+            "engine": "dashboard_gen",
+            "cost": 1.0,
+            "llm_used": False,
+            "complexity": detect_complexity(question),
+            "confidence": 0.98,
+            "parsed_query": None,
+            "fallback_used": False,
+            "fallback_reason": None
+        }
+
     # ─── New Phase B QueryPlanner Integration ──────────────────────────────
     planner = QueryPlanner(active_df_name)
     plan = planner.plan(question)

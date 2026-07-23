@@ -21,6 +21,7 @@ class ExecutionContext(BaseModel):
     code: Optional[str] = None
     raw_result: Any = None
     explanation: Optional[str] = None
+    dashboard_layout: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
     timings: Dict[str, float] = {}
     prompt_size: int = 0

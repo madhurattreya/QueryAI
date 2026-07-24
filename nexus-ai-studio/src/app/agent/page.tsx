@@ -23,8 +23,9 @@ export default function AgentArchitecturePage() {
     sql_connected: false,
     db_flavor: null,
     sql_tables: [],
-    settings: { model: "Qwen2.5:7B", explain_mode: true }
+    settings: { model: "Loading...", explain_mode: true }
   });
+
   const [activeStep, setActiveStep] = useState<number | null>(null);
 
   const steps = [
@@ -276,7 +277,8 @@ export default function AgentArchitecturePage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-on-surface-variant font-semibold">Primary LLM Model</span>
-                <span className="text-deep-navy font-bold font-mono">{status.settings?.model || "qwen2.5:7b"}</span>
+                <span className="text-deep-navy font-bold font-mono">{status.settings?.model || "qwen2.5:3b"}</span>
+
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-on-surface-variant font-semibold">Context Engine Type</span>

@@ -88,12 +88,17 @@ export default function SettingsPage() {
               onChange={(e) => setModel(e.target.value)}
               className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-4 py-3 text-xs text-on-surface focus:outline-none focus:border-vibrant-blue font-semibold cursor-pointer"
             >
-              <option value="qwen2.5:7b">Ollama: Qwen 2.5 (7B)</option>
+              <option value="qwen2.5:3b">Ollama: Qwen 2.5 (3B - Fast)</option>
+              <option value="qwen2.5:7b">Ollama: Qwen 2.5 (7B - Standard)</option>
+              <option value="qwen2.5:14b">Ollama: Qwen 2.5 (14B - High Precision)</option>
+              <option value="llama3.1:8b">Ollama: Llama 3.1 (8B)</option>
+              <option value="deepseek-r1:latest">Ollama: DeepSeek R1 (Reasoning)</option>
               <option value="gemma4:latest">Ollama: Gemma 4 (Latest)</option>
               <option value="gemini-1.5-flash" disabled={!hasGeminiKey}>
                 Gemini API: Gemini 1.5 Flash {!hasGeminiKey && "(Needs GEMINI_API_KEY in .env)"}
               </option>
             </select>
+
             {!hasGeminiKey && (
               <p className="text-[10px] text-error font-semibold">
                 * To enable Gemini, add your `GEMINI_API_KEY` to the `.env` file in the workspace directory.

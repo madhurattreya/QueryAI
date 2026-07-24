@@ -28,8 +28,9 @@ export default function EmbedWidget({
     setError(null);
     setResult(null);
 
-    try:
+    try {
       const res = await fetch(`${apiBaseUrl}/api/query`, {
+
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: query, dataset_id: datasetId }),

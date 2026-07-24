@@ -46,9 +46,21 @@ class DashboardManager:
         cursor.execute("SELECT * FROM dashboards ORDER BY updated_at DESC")
         rows = [dict(row) for row in cursor.fetchall()]
         conn.close()
+
+        seen_titles = set()
+        unique_rows = []
         for r in rows:
-            r["layout"] = json.loads(r["layout"])
-        return rows
+            title = r.get("title", "").strip()
+            if title not in seen_titles:
+                seen_titles.add(title)
+                try:
+                    r["layout"] = json.loads(r["layout"]) if isinstance(r["layout"], str) else r["layout"]
+                except Exception:
+                    r["layout"] = {}
+                unique_rows.append(r)
+
+        return unique_rows
+
 
     def update_dashboard(self, dash_id: str, title: str = None, layout: dict = None):
         conn = db.get_db_connection()

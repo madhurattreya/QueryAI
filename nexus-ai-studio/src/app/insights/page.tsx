@@ -116,11 +116,24 @@ export default function InsightsPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-surface-white border border-outline-variant/35 rounded-xl p-12 text-center text-on-surface-variant shadow-sm flex flex-col items-center">
-          <span className="material-symbols-outlined text-4xl mb-4 text-vibrant-blue font-variation-settings-fill" style={{ fontVariationSettings: "'FILL' 1" }}>psychology</span>
-          <p className="text-sm font-semibold">No insights available. Please load a data source on the Connection Manager page.</p>
+        <div className="text-center max-w-lg mx-auto my-16 flex flex-col items-center p-8 bg-surface-container/20 border border-outline-variant/30 rounded-2xl shadow-xs">
+          <div className="w-16 h-16 rounded-2xl bg-vibrant-blue/10 border border-vibrant-blue/20 flex items-center justify-center mb-5 text-vibrant-blue">
+            <span className="material-symbols-outlined text-3xl">psychology_alt</span>
+          </div>
+          <h3 className="text-xl font-extrabold text-deep-navy mb-2">No Active Dataset Loaded</h3>
+          <p className="text-xs text-on-surface-variant leading-relaxed mb-6 font-semibold max-w-md">
+            No active dataset is loaded for your account. Upload a CSV, Excel file, or connect a SQL database to generate strategic AI business insights.
+          </p>
+          <a
+            href="/connect"
+            className="bg-deep-navy text-white text-xs font-bold py-2.5 px-6 rounded-xl hover:bg-primary transition-all shadow-xs cursor-pointer flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-sm">cloud_upload</span>
+            <span>Upload New Dataset</span>
+          </a>
         </div>
       )}
+
     </DashboardLayout>
   );
 }

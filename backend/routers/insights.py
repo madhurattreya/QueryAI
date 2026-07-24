@@ -1,15 +1,25 @@
+"""
+backend/routers/insights.py
+─────────────────────────────
+FastAPI Router for AI Business Insights generation.
+"""
+
 import json
+import logging
+import pandas as pd
 from fastapi import APIRouter
 import backend.config as config
-from backend.services.llm import call_llm
+from backend.services.llm import LLMManager
 from backend.services.schema_cache import get_table_schema
 
-router = APIRouter(prefix="/api")
+
+logger = logging.getLogger("queryiq.insights")
+router = APIRouter(prefix="/api", tags=["Insights"])
 
 @router.get("/insights")
 def get_insights():
     """
-    Constructs high-value insights by reading database schema details directly from cache.
+    Generates high-value strategic business insights by analyzing dataset schemas.
     """
     available_sources = []
     if config.current_source_type == "sql" and config.database_engine:
@@ -27,7 +37,11 @@ def get_insights():
         schema_info += get_table_schema(name) + "\n"
             
     if not schema_info.strip():
-        return {"insights": [], "message": "No data source loaded."}
+        return {
+            "status": "empty",
+            "insights": [],
+            "message": "No active dataset loaded for insights analysis."
+        }
         
     prompt = f"""
 You are an expert Chief Data Officer and AI Data Analyst.
@@ -45,33 +59,62 @@ Format your output as a JSON list of objects. Each object must have the followin
 Return ONLY valid JSON (no markdown block, no extra characters, just the raw JSON list).
 """
     try:
-        response_text = call_llm(prompt)
-        # Parse JSON
+        manager = LLMManager()
+        response_text, _, _ = manager.call_llm_with_fallback(prompt, model=config.settings.get("model", "qwen2.5:3b"))
+        
+        # Parse JSON output
         clean_json = response_text.strip()
         if clean_json.startswith("```json"):
             clean_json = clean_json[7:]
+        if clean_json.startswith("```"):
+            clean_json = clean_json[3:]
         if clean_json.endswith("```"):
             clean_json = clean_json[:-3]
         clean_json = clean_json.strip()
         
         insights = json.loads(clean_json)
-        return {"insights": insights}
+        return {"status": "success", "insights": insights}
+        
     except Exception as e:
-        # Fallback
+        logger.error(f"LLM insights generation failed: {e}. Returning rule-based fallback insights.")
+        # Programmatic / Rule-based Fallback Insights
+        first_ds = available_sources[0] if available_sources else "Dataset"
+        df = config.datasets.get(first_ds) if available_sources else None
+        
+        cols = list(df.columns) if df is not None else ["date", "sales", "category", "region"]
+        num_cols = [c for c in cols if df is not None and pd.api.types.is_numeric_dtype(df[c])] if df is not None else ["sales", "profit"]
+        cat_cols = [c for c in cols if c not in num_cols] if df is not None else ["category", "region"]
+        
+        metric_col = num_cols[0] if num_cols else "Total Value"
+        group_col = cat_cols[0] if cat_cols else "Category"
+        
         return {
+            "status": "success",
             "insights": [
                 {
-                    "title": "Revenue Performance Trends",
-                    "metric": "Sales Growth",
-                    "description": "Analyze sales and order figures to determine growth patterns, identify the highest value transactions, and spot seasonal deviations.",
-                    "sql_or_python": "df.groupby('date')['sales'].sum()"
+                    "title": f"Concentration Analysis by {group_col}",
+                    "metric": "Pareto Distribution",
+                    "description": f"Analyze distribution of {metric_col} across {group_col} groups to discover top revenue drivers and tail risk concentrations.",
+                    "sql_or_python": f"df.groupby('{group_col}')['{metric_col}'].sum().sort_values(ascending=False)"
                 },
                 {
-                    "title": "Data Distribution Insights",
-                    "metric": "Anomaly Detection",
-                    "description": "Scan data ranges to detect outliers or records that deviate significantly from average values, indicating data errors or unique anomalies.",
-                    "sql_or_python": "df[df['sales'] > df['sales'].mean() + 3*df['sales'].std()]"
+                    "title": f"Statistical Outlier & Anomaly Detection",
+                    "metric": "3-Sigma Volatility",
+                    "description": f"Scan numeric distribution of {metric_col} to identify records deviating > 3 standard deviations from average values.",
+                    "sql_or_python": f"df[df['{metric_col}'] > df['{metric_col}'].mean() + 3 * df['{metric_col}'].std()]"
+                },
+                {
+                    "title": f"Summary Statistics & Variance Check",
+                    "metric": "Coefficient of Variation",
+                    "description": f"Evaluate volatility, percentiles, mean vs median skewness across primary numeric measures.",
+                    "sql_or_python": f"df[['{metric_col}']].describe()"
+                },
+                {
+                    "title": f"Multi-Dimension Metric Aggregation",
+                    "metric": "Group Performance",
+                    "description": f"Compute aggregated sums and averages partitioned across categorical dimensions for comparative benchmarking.",
+                    "sql_or_python": f"df.groupby(['{group_col}'])['{metric_col}'].agg(['sum', 'mean', 'count'])"
                 }
             ],
-            "error": str(e)
+            "fallback": True
         }

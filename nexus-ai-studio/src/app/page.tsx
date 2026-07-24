@@ -60,7 +60,7 @@ export default function WelcomePage() {
                   Start Exploring
                 </button>
               </Link>
-              <Link href="/connect">
+              <Link href="/connect?tab=sql">
                 <button className="border border-outline-variant text-white px-8 py-3 rounded-lg font-headline-sm hover:bg-white/5 transition-all cursor-pointer">
                   Connect Data
                 </button>
@@ -98,7 +98,7 @@ export default function WelcomePage() {
         {/* Quick Action Cards */}
         <section className="mb-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Link href="/connect" className="bg-surface-primary border border-border-subtle p-6 rounded-xl hover:shadow-lg transition-all group cursor-pointer">
+            <Link href="/connect?tab=file" className="bg-surface-primary border border-border-subtle p-6 rounded-xl hover:shadow-lg transition-all group cursor-pointer">
               <div className="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center mb-6 transition-colors group-hover:bg-primary-container">
                 <span className="material-symbols-outlined text-primary group-hover:text-secondary-container text-2xl">upload_file</span>
               </div>
@@ -109,7 +109,7 @@ export default function WelcomePage() {
               </div>
             </Link>
 
-            <Link href="/connect" className="bg-surface-primary border border-border-subtle p-6 rounded-xl hover:shadow-lg transition-all group cursor-pointer">
+            <Link href="/connect?tab=sql" className="bg-surface-primary border border-border-subtle p-6 rounded-xl hover:shadow-lg transition-all group cursor-pointer">
               <div className="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center mb-6 transition-colors group-hover:bg-primary-container">
                 <span className="material-symbols-outlined text-primary group-hover:text-secondary-container text-2xl">database</span>
               </div>
@@ -120,7 +120,8 @@ export default function WelcomePage() {
               </div>
             </Link>
 
-            <Link href="/connect" className="bg-surface-primary border border-border-subtle p-6 rounded-xl hover:shadow-lg transition-all group cursor-pointer">
+            <Link href="/connect?tab=folder" className="bg-surface-primary border border-border-subtle p-6 rounded-xl hover:shadow-lg transition-all group cursor-pointer">
+
               <div className="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center mb-6 transition-colors group-hover:bg-primary-container">
                 <span className="material-symbols-outlined text-primary group-hover:text-secondary-container text-2xl">folder_managed</span>
               </div>
@@ -130,6 +131,7 @@ export default function WelcomePage() {
                 SYNC DIRECTORY <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </div>
             </Link>
+
           </div>
         </section>
 

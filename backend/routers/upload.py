@@ -2,8 +2,10 @@ import os
 import tempfile
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Request
 from backend.services.dataset_manager import DatasetManager
+from backend.models.schemas import FolderImportRequest
 
 router = APIRouter(prefix="/api")
+
 
 MAX_FILE_SIZE = 25 * 1024 * 1024  # 25 MB
 ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls"}
@@ -97,3 +99,67 @@ async def upload_file(
         if os.path.exists(temp_path):
             try: os.remove(temp_path)
             except Exception: pass
+
+@router.post("/upload/folder")
+def import_folder(req: FolderImportRequest, request: Request):
+    """
+    Scans a local directory on server/host disk and batch-registers all supported data files (.csv, .xlsx, .xls, .parquet, .json).
+    """
+    from backend.models.schemas import FolderImportRequest
+    folder_path = req.folder_path.strip().strip('"').strip("'")
+    
+    if not os.path.exists(folder_path):
+        raise HTTPException(status_code=404, detail=f"Directory path '{folder_path}' does not exist on disk.")
+        
+    if not os.path.isdir(folder_path):
+        raise HTTPException(status_code=400, detail=f"Path '{folder_path}' is a file, not a directory.")
+        
+    # Extract user_id
+    user_id = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        try:
+            token = auth_header.split(" ")[1]
+            from backend.services.security_manager import decode_jwt
+            payload = decode_jwt(token)
+            user_id = payload.get("user_id") or payload.get("username") or payload.get("sub")
+        except Exception:
+            pass
+
+    manager = DatasetManager()
+    registered_files = []
+    failed_files = []
+    
+    supported_exts = {".csv", ".xlsx", ".xls", ".parquet", ".json"}
+    
+    for root, _, files in os.walk(folder_path):
+        for fname in files:
+            ext = os.path.splitext(fname)[1].lower()
+            if ext in supported_exts and not fname.startswith("~$") and not fname.startswith("."):
+                full_file_path = os.path.join(root, fname)
+                try:
+                    res = manager.register_dataset_file(
+                        original_filename=fname,
+                        source_path=full_file_path,
+                        behavior=req.behavior,
+                        user_id=user_id
+                    )
+                    if res.get("status") == "success":
+                        registered_files.append({"filename": fname, "id": res.get("id"), "rows": res.get("rows")})
+                    else:
+                        failed_files.append({"filename": fname, "reason": res.get("message")})
+                except Exception as ex:
+                    failed_files.append({"filename": fname, "reason": str(ex)})
+
+    if not registered_files and not failed_files:
+        raise HTTPException(status_code=400, detail=f"No supported data files (.csv, .xlsx, .parquet, .json) found in folder '{folder_path}'.")
+
+    return {
+        "status": "success",
+        "message": f"Successfully registered {len(registered_files)} dataset(s) from directory.",
+        "registered_count": len(registered_files),
+        "failed_count": len(failed_files),
+        "registered_files": registered_files,
+        "failed_files": failed_files
+    }
+

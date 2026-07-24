@@ -23,13 +23,21 @@ interface Dataset {
 }
 
 export default function ConnectPage() {
-  const [sourceType, setSourceType] = useState<"file" | "sql">("file");
+  const [sourceType, setSourceType] = useState<"file" | "sql" | "folder">("file");
   const [dbType, setDbType] = useState<"sqlite" | "mysql" | "postgresql">("sqlite");
 
   // File Upload State
   const [file, setFile] = useState<File | null>(null);
   const [uploadBehavior, setUploadBehavior] = useState<"keep" | "replace">("keep");
   const [uploadStatus, setUploadStatus] = useState<{ type: "idle" | "loading" | "success" | "error"; message: string }>({
+    type: "idle",
+    message: ""
+  });
+
+  // Folder Import State
+  const [folderPath, setFolderPath] = useState("");
+  const [folderBehavior, setFolderBehavior] = useState<"keep" | "replace">("keep");
+  const [folderStatus, setFolderStatus] = useState<{ type: "idle" | "loading" | "success" | "error"; message: string }>({
     type: "idle",
     message: ""
   });
@@ -47,6 +55,7 @@ export default function ConnectPage() {
     type: "idle",
     message: ""
   });
+
 
   // Datasets Registry State
   const [datasets, setDatasets] = useState<Dataset[]>([]);
@@ -103,7 +112,51 @@ export default function ConnectPage() {
 
   useEffect(() => {
     fetchDatasets();
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const requestedTab = params.get("tab");
+      if (requestedTab === "sql") {
+        setSourceType("sql");
+      } else if (requestedTab === "file") {
+        setSourceType("file");
+      } else if (requestedTab === "folder" || requestedTab === "folders") {
+        setSourceType("folder");
+      }
+    }
   }, []);
+
+  const handleFolderImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!folderPath.trim()) return;
+
+    setFolderStatus({ type: "loading", message: "Scanning folder and batch-registering datasets..." });
+    try {
+      const res = await ApiClient.request("/api/upload/folder", {
+        method: "POST",
+        body: JSON.stringify({
+          folder_path: folderPath.trim(),
+          behavior: folderBehavior
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === "success") {
+        setFolderStatus({
+          type: "success",
+          message: `Successfully batch-imported ${data.registered_count} dataset(s) from directory!`
+        });
+        await fetchDatasets();
+      } else {
+        setFolderStatus({
+          type: "error",
+          message: data.detail || data.message || "Failed to import folder directory."
+        });
+      }
+    } catch (err: any) {
+      setFolderStatus({ type: "error", message: err.message || "Network error occurred." });
+    }
+  };
+
+
 
   const handleFileUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -333,7 +386,19 @@ export default function ConnectPage() {
               <span className="material-symbols-outlined text-sm">database</span>
               SQL Connections
             </button>
+            <button
+              onClick={() => setSourceType("folder")}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                sourceType === "folder" 
+                  ? "bg-deep-navy text-white shadow-sm" 
+                  : "text-on-surface-variant hover:text-deep-navy"
+              }`}
+            >
+              <span className="material-symbols-outlined text-sm">folder_managed</span>
+              Import Folders
+            </button>
           </div>
+
 
           <div className="bg-surface-white border border-outline-variant/35 rounded-xl p-8 shadow-sm">
             {sourceType === "file" ? (
@@ -405,8 +470,9 @@ export default function ConnectPage() {
                   {uploadStatus.type === "loading" ? "Registering Dataset..." : "Import File"}
                 </button>
               </form>
-            ) : (
+            ) : sourceType === "sql" ? (
               <form onSubmit={handleSqlConnect} className="space-y-4">
+
                 <h3 className="text-sm font-bold text-deep-navy uppercase tracking-wider mb-2">
                   Database Configurations
                 </h3>
@@ -514,7 +580,90 @@ export default function ConnectPage() {
                   {sqlStatus.type === "loading" ? "Registering Server..." : "Establish Connection"}
                 </button>
               </form>
+            ) : (
+              <form onSubmit={handleFolderImport} className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-bold text-deep-navy uppercase tracking-wider mb-2">
+                    Batch Folder & Directory Sync
+                  </h3>
+                  <p className="text-xs text-on-surface-variant leading-relaxed font-semibold">
+                    Enter a local directory path to scan and batch-register all contained CSV, Excel, Parquet, and JSON datasets.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant mb-2">
+                    Directory Path on Host Disk
+                  </label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3.5 top-3 text-on-surface-variant text-base">folder_open</span>
+                    <input
+                      type="text"
+                      className="w-full bg-surface-container-lowest border border-outline-variant/60 rounded-lg pl-10 pr-4 py-2.5 text-xs text-on-surface focus:outline-none focus:border-vibrant-blue font-mono font-semibold"
+                      placeholder="C:\Users\Public\Data\Sales_2024 or /var/data/analytics"
+                      value={folderPath}
+                      onChange={(e) => setFolderPath(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <p className="text-[10px] text-on-surface-variant mt-1.5 font-semibold">
+                    * Supports nested subdirectories. Automatically registers multiple files into QueryIQ catalog.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-on-surface-variant">Import Strategy</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+                      <input
+                        type="radio"
+                        name="folderBehavior"
+                        value="keep"
+                        checked={folderBehavior === "keep"}
+                        onChange={() => setFolderBehavior("keep")}
+                        className="text-vibrant-blue cursor-pointer"
+                      />
+                      <span>Keep Existing Datasets</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+                      <input
+                        type="radio"
+                        name="folderBehavior"
+                        value="replace"
+                        checked={folderBehavior === "replace"}
+                        onChange={() => setFolderBehavior("replace")}
+                        className="text-vibrant-blue cursor-pointer"
+                      />
+                      <span>Replace Active Dataset</span>
+                    </label>
+                  </div>
+                </div>
+
+                {folderStatus.message && (
+                  <div
+                    className={`p-4 rounded-lg text-xs font-semibold ${
+                      folderStatus.type === "success"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : folderStatus.type === "loading"
+                        ? "bg-blue-50 text-vibrant-blue border border-blue-200"
+                        : "bg-error-container/20 text-error border border-error/20"
+                    }`}
+                  >
+                    {folderStatus.message}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={folderStatus.type === "loading" || !folderPath.trim()}
+                  className="w-full bg-vibrant-blue hover:bg-secondary-container text-white text-sm font-bold py-3 rounded-lg transition-colors shadow-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-sm">sync</span>
+                  {folderStatus.type === "loading" ? "Scanning Directory..." : "Batch Sync & Register Folder"}
+                </button>
+              </form>
             )}
+
           </div>
         </div>
 

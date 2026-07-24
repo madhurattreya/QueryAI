@@ -23,3 +23,8 @@ class QueryRequest(BaseModel):
 
 class SwitchSourceRequest(BaseModel):
     source_type: str
+
+class FolderImportRequest(BaseModel):
+    folder_path: str
+    behavior: str = "keep"
+

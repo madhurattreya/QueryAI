@@ -1360,9 +1360,14 @@ class QueryOrchestrator:
         limit_rows = config.app_settings.preview_rows
         
         if isinstance(result, pd.DataFrame):
+            from backend.services.rls_engine import rls_engine
+            user_ctx = getattr(context, "user_context", {}) or {"role": "viewer"}
+            result = rls_engine.apply_rls_to_dataframe(result, user_ctx)
+
             if dataset_rows > config.app_settings.max_result_rows:
                 result = result.head(config.app_settings.max_result_rows)
                 dataset_rows = config.app_settings.max_result_rows
+
                 
             for col in result.columns:
                 if pd.api.types.is_datetime64_any_dtype(result[col]):

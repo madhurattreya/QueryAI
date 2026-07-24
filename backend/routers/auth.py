@@ -279,3 +279,27 @@ def oauth_login(provider: str, email: str = "oauth_user@example.com", username: 
         "token_type": "bearer",
         "user": token_payload
     }
+
+
+class SSOConfigPayload(BaseModel):
+    provider: str
+    enabled: bool = True
+    client_id: str
+    issuer_url: str = ""
+    tenant_id: str = ""
+    role_mapping: dict = {}
+
+@router.post("/sso/config")
+def configure_sso_provider(payload: SSOConfigPayload):
+    from backend.services.sso_manager import sso_manager
+    res = sso_manager.configure_provider(payload.provider, payload.dict())
+    return res
+
+@router.get("/sso/config/{provider}")
+def get_sso_config(provider: str):
+    from backend.services.sso_manager import sso_manager
+    cfg = sso_manager.get_provider_config(provider)
+    if not cfg:
+        raise HTTPException(status_code=440, detail="SSO Provider not found or not configured.")
+    return cfg
+

@@ -8,10 +8,12 @@ python-multipart==0.0.9
 
 # ─── Data & Analytics ─────────────────────────────────────────────────────────
 pandas==2.2.2
+duckdb==1.1.0
 openpyxl==3.1.5
 plotly==5.23.0
 kaleido==0.2.1
 SQLAlchemy==2.0.35
+
 
 # ─── Database Drivers ─────────────────────────────────────────────────────────
 pymysql==1.1.1

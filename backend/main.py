@@ -47,6 +47,8 @@ from backend.routers.export import router as export_router
 from backend.routers.auth import router as auth_router
 from backend.routers.workspace import router as workspace_router
 from backend.routers.api_mgmt import router as api_mgmt_router
+from backend.routers.semantic_sync import router as semantic_sync_router
+
 
 
 # ─── Lifespan ─────────────────────────────────────────────────────────────────
@@ -300,6 +302,8 @@ app.include_router(export_router)
 app.include_router(auth_router)
 app.include_router(workspace_router)
 app.include_router(api_mgmt_router)
+app.include_router(semantic_sync_router)
+
 
 
 # ─── Root ─────────────────────────────────────────────────────────────────────

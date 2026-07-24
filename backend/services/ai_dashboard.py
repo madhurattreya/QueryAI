@@ -592,17 +592,42 @@ class AIDashboardService:
 
         # ─── 3. GENERAL / HR / OTHER FALLBACK ─────────────────────────────────
         else:
-            num_cols = df.select_dtypes(include=["number"]).columns.tolist()
+            def is_id_column(c: str) -> bool:
+                cn = c.lower().strip()
+                return (
+                    cn.endswith("_id") or cn.endswith("id") or cn.startswith("id_") or
+                    cn.endswith("_code") or cn.endswith("code") or cn.endswith("_num") or
+                    cn.endswith("_no") or cn == "zip" or cn == "pincode" or cn == "phone"
+                )
+
+            all_num_cols = df.select_dtypes(include=["number"]).columns.tolist()
+            valid_num_cols = [c for c in all_num_cols if not is_id_column(c)]
+            if not valid_num_cols:
+                valid_num_cols = all_num_cols
+
             text_cols = df.select_dtypes(include=["object", "category", "string"]).columns.tolist()
             
-            m1 = num_cols[0] if num_cols else None
-            m2 = num_cols[1] if len(num_cols) > 1 else m1
+            # Select primary metric m1 (prefer amount, sales, revenue, balance, price, score, rating, val, quantity)
+            m1 = None
+            for key in ["amount", "sales", "revenue", "balance", "price", "score", "rating", "val", "quantity", "cost"]:
+                matches = [c for c in valid_num_cols if key in c.lower()]
+                if matches:
+                    m1 = matches[0]
+                    break
+            if not m1 and valid_num_cols:
+                m1 = valid_num_cols[0]
+
+            m2 = valid_num_cols[1] if len(valid_num_cols) > 1 and valid_num_cols[1] != m1 else m1
+
             c1 = text_cols[0] if text_cols else "Group"
             c2 = text_cols[1] if len(text_cols) > 1 else c1
             c3 = text_cols[2] if len(text_cols) > 2 else c1
 
+            m1_unit = "$" if m1 and any(k in m1.lower() for k in ["amount", "sales", "revenue", "price", "balance", "cost", "usd"]) else ""
+            m2_unit = "$" if m2 and any(k in m2.lower() for k in ["amount", "sales", "revenue", "price", "balance", "cost", "usd"]) else ""
+
             v1 = float(pd.to_numeric(df[m1], errors="coerce").sum()) if m1 else 0.0
-            v2 = float(pd.to_numeric(df[m2], errors="coerce").mean()) if m2 else 0.0
+            v2 = float(pd.to_numeric(df[m2], errors="coerce").mean()) if m2 and m2 != m1 else (float(pd.to_numeric(df[m1], errors="coerce").mean()) if m1 else 0.0)
             tot_r = int(len(df))
             u_cat = int(df[c1].nunique()) if c1 in df else 0
 
@@ -615,17 +640,17 @@ class AIDashboardService:
                 "domain_type": "general",
                 "dataset_name": ds_name,
                 "dashboard_title": f"{ds_name.replace('_', ' ').title()} Analytics Overview",
-                "unit_symbol": "",
+                "unit_symbol": m1_unit,
                 "total_rows": tot_r,
                 "kpis": {
                     "card1_title": "Total Records",
                     "card1_val": f"{tot_r:,}",
                     "card1_badge": "Rows",
                     "card2_title": f"Total {m1 or 'Metric'}",
-                    "card2_val": f"{v1:,.2f}",
+                    "card2_val": f"{m1_unit}{v1:,.2f}" if m1_unit else f"{v1:,.2f}",
                     "card2_badge": m1 or "Sum",
                     "card3_title": f"Avg {m2 or 'Metric'}",
-                    "card3_val": f"{v2:,.2f}",
+                    "card3_val": f"{m2_unit}{v2:,.2f}" if m2_unit else f"{v2:,.2f}",
                     "card3_badge": m2 or "Mean",
                     "card4_title": f"Unique {c1}",
                     "card4_val": f"{u_cat:,}",
